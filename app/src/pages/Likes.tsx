@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { ProfileModal, ProfileThumbnail } from '@/components'
+import { ProfileModal, ProfileThumbnail, LoadingMoreIndicator } from '@/components'
 import { matchingService } from '@/services/matching'
 import { User } from '@/types'
 import { useToast } from '@/hooks'
@@ -66,7 +66,9 @@ export const Likes: React.FC = () => {
   if (isLoading) {
     return (
       <div className="likes-container">
-        <div className="likes-loading">{t('common.loading')}</div>
+        <div className="likes-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

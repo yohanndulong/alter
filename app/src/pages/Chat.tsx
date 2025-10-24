@@ -546,7 +546,9 @@ export const Chat: React.FC = () => {
   if (isLoading) {
     return (
       <div className="chat-container">
-        <div className="chat-loading">{t('common.loading')}</div>
+        <div className="chat-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

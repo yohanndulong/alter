@@ -349,7 +349,9 @@ export const AlterChat: React.FC = () => {
   if (isLoading) {
     return (
       <div className="alter-chat-container">
-        <div className="alter-chat-loading">{t('common.loading')}</div>
+        <div className="alter-chat-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

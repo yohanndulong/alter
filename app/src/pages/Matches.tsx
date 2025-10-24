@@ -1,88 +1,31 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ProfileModal, Logo, CachedImage, Badge, LoadingMoreIndicator } from '@/components'
-import { matchingService } from '@/services/matching'
 import { Match } from '@/types'
-import { useToast } from '@/hooks'
+import { useMatches, useConversationsStatus } from '@/hooks'
 import { formatRelativeTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
-import { matchesStorage } from '@/utils/matchesStorage'
 import './Matches.css'
 
 export const Matches: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { error: showError } = useToast()
 
-  const [matches, setMatches] = useState<Match[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [conversationsStatus, setConversationsStatus] = useState<{
-    activeConversations: number
-    maxConversations: number
-    remainingSlots: number
-    canLike: boolean
-  } | null>(null)
 
-  useEffect(() => {
-    loadMatchesWithCache()
-    loadConversationsStatus()
-  }, [])
+  // Utilisation de React Query - cache automatique de 5 minutes !
+  const { data: matches = [], isLoading } = useMatches()
+  const { data: conversationsStatus } = useConversationsStatus()
 
-  const loadConversationsStatus = async () => {
-    try {
-      const status = await matchingService.getConversationsStatus()
-      setConversationsStatus(status)
-    } catch (err) {
-      console.error('Error loading conversations status:', err)
-    }
-  }
-
-  const sortMatches = (data: Match[]): Match[] => {
-    return data.sort((a, b) => {
+  // Tri des matches par date
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort((a, b) => {
       if (!a.lastMessageAt) return 1
       if (!b.lastMessageAt) return -1
       return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
     })
-  }
-
-  const loadMatchesWithCache = async () => {
-    try {
-      // 1. Charger immédiatement le cache s'il existe
-      const { matches: cachedMatches, shouldRefresh } = await matchesStorage.loadMatchesWithStatus()
-
-      if (cachedMatches && cachedMatches.length > 0) {
-        // Afficher les données en cache immédiatement
-        const sortedCached = sortMatches(cachedMatches)
-        setMatches(sortedCached)
-        setIsLoading(false)
-
-        // Si le cache est valide, on passe en mode rafraîchissement
-        if (!shouldRefresh) {
-          return
-        }
-        setIsRefreshing(true)
-      }
-
-      // 2. Charger les données fraîches depuis l'API
-      const freshData = await matchingService.getMatches()
-      const sortedData = sortMatches(freshData)
-
-      // 3. Mettre à jour l'état et le cache
-      setMatches(sortedData)
-      await matchesStorage.saveMatches(freshData)
-    } catch (err: any) {
-      // Ne montrer l'erreur que si on n'a pas de cache
-      if (matches.length === 0) {
-        showError(t('common.error'))
-      }
-    } finally {
-      setIsLoading(false)
-      setIsRefreshing(false)
-    }
-  }
+  }, [matches])
 
   const handleMatchClick = (matchId: string) => {
     navigate(`/chat/${matchId}`)
@@ -102,7 +45,7 @@ export const Matches: React.FC = () => {
     }
   }
 
-  if (isLoading && matches.length === 0) {
+  if (isLoading) {
     return (
       <div className="matches-container">
         <div className="matches-loading-container">
@@ -112,7 +55,7 @@ export const Matches: React.FC = () => {
     )
   }
 
-  if (matches.length === 0 && !isLoading) {
+  if (sortedMatches.length === 0) {
     return (
       <div className="matches-container">
         <div className="matches-header">
@@ -147,7 +90,7 @@ export const Matches: React.FC = () => {
       </div>
 
       <div className="matches-list">
-        {matches.map((match) => (
+        {sortedMatches.map((match) => (
           <div
             key={match.id}
             className="matches-conversation"
