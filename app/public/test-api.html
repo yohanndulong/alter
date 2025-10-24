@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock API Test Suite</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #333; }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-item {
+      padding: 10px;
+      margin: 8px 0;
+      border-left: 4px solid #ccc;
+      background: #f9f9f9;
+    }
+    .test-item.pass {
+      border-left-color: #4caf50;
+      background: #f1f8f4;
+    }
+    .test-item.fail {
+      border-left-color: #f44336;
+      background: #fef1f0;
+    }
+    .test-item.running {
+      border-left-color: #2196F3;
+      background: #e3f2fd;
+    }
+    .summary {
+      background: #333;
+      color: white;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 30px;
+    }
+    button {
+      background: #2196F3;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #1976D2;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .response-data {
+      margin-top: 8px;
+      padding: 8px;
+      background: #eee;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow: auto;
+    }
+    .stat {
+      display: inline-block;
+      margin: 10px 20px 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Mock API Test Suite</h1>
+  <button id="runTests" onclick="runAllTests()">▶ Run All Tests</button>
+
+  <div id="testResults"></div>
+
+  <div id="summary" class="summary" style="display:none;">
+    <h2>📊 Test Summary</h2>
+    <div id="summaryContent"></div>
+  </div>
+
+  <script>
+    const AUTH_TOKEN = 'test-token-123';
+    const API_BASE = '/api';
+    let testResults = [];
+
+    // Store auth token in localStorage to simulate logged-in user
+    localStorage.setItem('auth_token', AUTH_TOKEN);
+
+    async function apiCall(method, endpoint, body = null) {
+      const startTime = Date.now();
+      try {
+        const options = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${AUTH_TOKEN}`
+          }
+        };
+
+        if (body) {
+          options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(API_BASE + endpoint, options);
+        const responseTime = Date.now() - startTime;
+        const data = await response.json();
+
+        return {
+          success: response.ok,
+          status: response.status,
+          data,
+          responseTime
+        };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message,
+          responseTime: Date.now() - startTime
+        };
+      }
+    }
+
+    async function runTest(name, method, endpoint, body, expectedStatus = 200) {
+      const testItem = document.createElement('div');
+      testItem.className = 'test-item running';
+      testItem.innerHTML = `<strong>${name}</strong><br>⏳ Running...`;
+      document.getElementById('testResults').appendChild(testItem);
+
+      const result = await apiCall(method, endpoint, body);
+
+      const passed = result.success && result.status === expectedStatus;
+      testItem.className = `test-item ${passed ? 'pass' : 'fail'}`;
+
+      let html = `<strong>${passed ? '✅' : '❌'} ${name}</strong><br>`;
+      html += `${method} ${endpoint} - Status: ${result.status} (${result.responseTime}ms)<br>`;
+
+      if (result.data) {
+        html += `<div class="response-data">${JSON.stringify(result.data, null, 2).slice(0, 500)}</div>`;
+      }
+
+      if (result.error) {
+        html += `<div class="response-data">Error: ${result.error}</div>`;
+      }
+
+      testItem.innerHTML = html;
+
+      testResults.push({
+        name,
+        passed,
+        status: result.status,
+        responseTime: result.responseTime
+      });
+
+      return result;
+    }
+
+    async function runAllTests() {
+      document.getElementById('runTests').disabled = true;
+      document.getElementById('testResults').innerHTML = '';
+      document.getElementById('summary').style.display = 'none';
+      testResults = [];
+
+      // ONBOARDING TESTS
+      const section1 = document.createElement('div');
+      section1.className = 'test-section';
+      section1.innerHTML = '<h2>📝 Onboarding Service (3 endpoints)</h2>';
+      document.getElementById('testResults').appendChild(section1);
+
+      await runTest('Get Onboarding Questions', 'GET', '/onboarding/questions');
+      await runTest('Submit Onboarding Answers', 'POST', '/onboarding/answers', {
+        answers: [
+          { questionId: 'q1', answer: 'John Doe' },
+          { questionId: 'q2', answer: 28 },
+          { questionId: 'q3', answer: 'Male' }
+        ]
+      });
+      await runTest('Complete Onboarding', 'POST', '/onboarding/complete');
+
+      // MATCHING TESTS
+      const section2 = document.createElement('div');
+      section2.className = 'test-section';
+      section2.innerHTML = '<h2>❤️ Matching Service (6 endpoints)</h2>';
+      document.getElementById('testResults').appendChild(section2);
+
+      const discoverResult = await runTest('Get Discover Profiles', 'GET', '/matching/discover');
+      const userId = discoverResult.data?.[0]?.id || 'discover-1';
+
+      await runTest('Like a Profile', 'POST', `/matching/like/${userId}`);
+      await runTest('Pass a Profile', 'POST', `/matching/pass/${userId}`);
+
+      const matchesResult = await runTest('Get Matches', 'GET', '/matching/matches');
+      await runTest('Get Interested Users', 'GET', '/matching/interested');
+
+      const matchId = matchesResult.data?.[0]?.id;
+      if (matchId) {
+        await runTest('Unmatch with User', 'DELETE', `/matching/matches/${matchId}`);
+      }
+
+      // CHAT TESTS
+      const section3 = document.createElement('div');
+      section3.className = 'test-section';
+      section3.innerHTML = '<h2>💬 Chat Service (6 endpoints)</h2>';
+      document.getElementById('testResults').appendChild(section3);
+
+      // Refresh matches to get valid match ID
+      const matchesResult2 = await apiCall('GET', '/matching/matches');
+      const chatMatchId = matchesResult2.data?.[0]?.id;
+
+      if (chatMatchId) {
+        await runTest('Get Match Messages', 'GET', `/chat/matches/${chatMatchId}/messages`);
+        await runTest('Send Message', 'POST', `/chat/matches/${chatMatchId}/messages`, {
+          content: 'Hello! This is a test message from the test suite.'
+        }, 201);
+        await runTest('Mark Messages as Read', 'POST', `/chat/matches/${chatMatchId}/read`);
+      }
+
+      await runTest('Get AI Chat History', 'GET', '/chat/ai/messages');
+      await runTest('Send AI Message', 'POST', '/chat/ai/messages', {
+        content: 'Hello AI! Tell me about matching algorithms.'
+      }, 201);
+      await runTest('Answer AI Question', 'POST', '/chat/ai/answer', {
+        questionId: 'test-q',
+        answer: 'I love hiking and photography'
+      }, 201);
+
+      // ERROR TESTS
+      const section4 = document.createElement('div');
+      section4.className = 'test-section';
+      section4.innerHTML = '<h2>🔒 Error & Auth Tests</h2>';
+      document.getElementById('testResults').appendChild(section4);
+
+      // Test without auth
+      const noAuthResult = await fetch('/api/onboarding/questions');
+      const noAuthTest = {
+        name: 'Unauthorized Request (no token)',
+        passed: noAuthResult.status === 401,
+        status: noAuthResult.status,
+        responseTime: 0
+      };
+      testResults.push(noAuthTest);
+
+      const testItem = document.createElement('div');
+      testItem.className = `test-item ${noAuthTest.passed ? 'pass' : 'fail'}`;
+      testItem.innerHTML = `<strong>${noAuthTest.passed ? '✅' : '❌'} ${noAuthTest.name}</strong><br>Should return 401 - Got ${noAuthTest.status}`;
+      document.getElementById('testResults').appendChild(testItem);
+
+      // Show summary
+      showSummary();
+      document.getElementById('runTests').disabled = false;
+    }
+
+    function showSummary() {
+      const passed = testResults.filter(r => r.passed).length;
+      const failed = testResults.filter(r => r.passed === false).length;
+      const total = testResults.length;
+      const avgTime = testResults.reduce((acc, r) => acc + r.responseTime, 0) / total;
+
+      const summaryHtml = `
+        <div class="stat">
+          <strong>Total Tests:</strong> ${total}
+        </div>
+        <div class="stat">
+          <strong>✅ Passed:</strong> ${passed}
+        </div>
+        <div class="stat">
+          <strong>❌ Failed:</strong> ${failed}
+        </div>
+        <div class="stat">
+          <strong>⚡ Avg Response Time:</strong> ${avgTime.toFixed(2)}ms
+        </div>
+        <div style="margin-top: 20px;">
+          <strong style="font-size: 1.2em;">
+            ${passed === total ? '🎉 ALL TESTS PASSED!' : '⚠️ SOME TESTS FAILED'}
+          </strong>
+        </div>
+      `;
+
+      document.getElementById('summaryContent').innerHTML = summaryHtml;
+      document.getElementById('summary').style.display = 'block';
+    }
+
+    // Auto-run tests after a short delay to ensure MSW is loaded
+    setTimeout(() => {
+      console.log('Ready to run tests. Click "Run All Tests" button or it will auto-run in 2 seconds...');
+      setTimeout(runAllTests, 2000);
+    }, 1000);
+  </script>
+</body>
+</html>

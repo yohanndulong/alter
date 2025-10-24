@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  db:
+    image: ankane/pgvector
+    restart: always
+    environment:
+      POSTGRES_DB: alter_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - alter-network
+
+  # Interface d'administration PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@alter.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - '5050:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - alter-network
+
+ 
+volumes:
+  db_data:
+  pgadmin_data:
+
+networks:
+  alter-network:
+    driver: bridge

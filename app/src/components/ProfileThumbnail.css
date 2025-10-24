@@ -1,0 +1,106 @@
+.profile-thumbnail {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+.profile-thumbnail:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.profile-thumbnail:active {
+  transform: translateY(-2px);
+}
+
+.profile-thumbnail__image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+}
+
+.profile-thumbnail__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-thumbnail__badge {
+  position: absolute;
+  top: var(--spacing-2);
+  left: var(--spacing-2);
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--spacing-2);
+  background: linear-gradient(135deg, var(--color-error-500), var(--color-error-600));
+  color: white;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-md);
+  z-index: 5;
+}
+
+.profile-thumbnail__compatibility {
+  position: absolute;
+  top: var(--spacing-2);
+  right: var(--spacing-2);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+}
+
+.profile-thumbnail__compatibility-icon {
+  font-size: var(--font-size-sm);
+}
+
+.profile-thumbnail__compatibility-value {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: white;
+}
+
+.profile-thumbnail__info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--spacing-5) var(--spacing-3) var(--spacing-4);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  z-index: 5;
+}
+
+.profile-thumbnail__name {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  margin: 0;
+}
+
+.profile-thumbnail__distance {
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .profile-thumbnail__info {
+    padding: var(--spacing-4) var(--spacing-2) var(--spacing-3);
+  }
+
+  .profile-thumbnail__name {
+    font-size: var(--font-size-sm);
+  }
+}

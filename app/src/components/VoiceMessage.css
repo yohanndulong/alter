@@ -1,0 +1,71 @@
+.voice-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.voice-message--sent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.voice-message--received {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.voice-message-play-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  color: white;
+}
+
+.voice-message-play-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.voice-message-play-button:active {
+  transform: scale(0.95);
+}
+
+.voice-message-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.voice-message-waveform {
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.voice-message-progress {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: width 0.1s linear;
+  border-radius: 8px;
+}
+
+.voice-message-time {
+  font-size: 12px;
+  opacity: 0.8;
+  text-align: right;
+}

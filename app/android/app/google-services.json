@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "771503754969",
+    "project_id": "alter-194ca",
+    "storage_bucket": "alter-194ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771503754969:android:9f286309d98bffb4e778c8",
+        "android_client_info": {
+          "package_name": "com.alter.dating"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDL_711RrbEB0u1hC7XL1cvW9qn5v5-5dQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,127 @@
+.voice-recorder {
+  padding: 24px;
+}
+
+.voice-recorder-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 32px;
+  text-align: center;
+  color: white;
+}
+
+.voice-recorder-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  margin-bottom: 24px;
+}
+
+.voice-recorder-recording,
+.voice-recorder-ready,
+.voice-recorder-idle {
+  position: relative;
+  color: white;
+}
+
+.voice-recorder-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.3);
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+.voice-recorder-recording {
+  color: #ef4444;
+}
+
+.voice-recorder-ready {
+  color: #10b981;
+}
+
+.voice-recorder-idle {
+  color: #8b5cf6;
+  opacity: 0.6;
+}
+
+.voice-recorder-duration {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  font-variant-numeric: tabular-nums;
+}
+
+.voice-recorder-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.voice-recorder-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.voice-recorder-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.voice-recorder-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.voice-recorder-button:active {
+  transform: translateY(0);
+}
+
+.voice-recorder-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.voice-recorder-button--record {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.voice-recorder-button--stop {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.voice-recorder-button--retry {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.voice-recorder-button--send {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}

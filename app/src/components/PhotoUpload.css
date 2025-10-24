@@ -1,0 +1,152 @@
+.photo-upload {
+  width: 100%;
+}
+
+.photo-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.photo-upload-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-bg-secondary);
+}
+
+.photo-upload-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-upload-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.photo-upload-remove:hover {
+  background: rgba(220, 38, 38, 0.9);
+  transform: scale(1.1);
+}
+
+.photo-upload-add {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  border: 2px dashed var(--color-border);
+  background: var(--color-bg-secondary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 1rem;
+}
+
+.photo-upload-add:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: var(--color-bg-hover);
+}
+
+.photo-upload-add:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.photo-upload-plus {
+  font-size: 48px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.photo-upload-text {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.photo-upload-hint {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.photo-upload-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-bg-tertiary);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: photo-upload-spin 0.8s linear infinite;
+}
+
+@keyframes photo-upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .photo-upload-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .photo-upload-plus {
+    font-size: 36px;
+  }
+
+  .photo-upload-text {
+    font-size: 0.75rem;
+  }
+}
+
+/* Dark mode */
+[data-theme='dark'] .photo-upload-add {
+  border-color: #374151;
+  background: #1f2937;
+}
+
+[data-theme='dark'] .photo-upload-add:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: #374151;
+}
+
+[data-theme='dark'] .photo-upload-item {
+  background: #1f2937;
+}
+
+/* Blue mode */
+[data-theme='blue'] .photo-upload-add {
+  border-color: #1e4976;
+  background: #0d2942;
+}
+
+[data-theme='blue'] .photo-upload-add:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  background: #1e4976;
+}
+
+[data-theme='blue'] .photo-upload-item {
+  background: #0d2942;
+}

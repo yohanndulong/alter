@@ -1,0 +1,194 @@
+.likes-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-4);
+  padding-top: calc(var(--spacing-4) + env(safe-area-inset-top));
+  padding-bottom: calc(60px + var(--spacing-4));
+  overflow: hidden;
+}
+
+.likes-loading {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+.likes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-2) 0;
+  flex-shrink: 0;
+}
+
+.likes-back-button {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border);
+}
+
+.likes-back-button:hover {
+  background: var(--color-surface-hover);
+  transform: scale(1.05);
+  box-shadow: var(--shadow-md);
+}
+
+.likes-back-button:active {
+  transform: scale(0.95);
+}
+
+.likes-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.likes-counter {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  min-width: 60px;
+  text-align: right;
+}
+
+.likes-spacer {
+  width: 44px;
+}
+
+.likes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--spacing-4);
+  padding: var(--spacing-4) 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* .likes-modal-content removed - using ProfileModal component */
+
+.likes-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-8);
+  max-width: 400px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+.likes-empty-icon {
+  font-size: 5rem;
+  margin-bottom: var(--spacing-4);
+  opacity: 0.5;
+}
+
+.likes-empty-title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--spacing-3) 0;
+}
+
+.likes-empty-text {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--spacing-6) 0;
+  line-height: var(--line-height-relaxed);
+}
+
+.likes-empty-button {
+  padding: var(--spacing-3) var(--spacing-6);
+  border: none;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  color: white;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-md);
+}
+
+.likes-empty-button:hover {
+  background: linear-gradient(135deg, var(--color-primary-600), var(--color-primary-700));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.likes-empty-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .likes-container {
+    padding: var(--spacing-3);
+    padding-bottom: calc(55px + var(--spacing-3));
+  }
+
+  .likes-header {
+    padding: var(--spacing-1) 0;
+  }
+
+  .likes-back-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .likes-title {
+    font-size: var(--font-size-xl);
+  }
+
+  .likes-counter {
+    font-size: var(--font-size-xs);
+  }
+
+  .likes-spacer {
+    width: 40px;
+  }
+
+  .likes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) 0;
+  }
+
+  .likes-profile-info {
+    padding: var(--spacing-2);
+  }
+
+  .likes-profile-name {
+    font-size: var(--font-size-sm);
+  }
+
+  .likes-empty {
+    padding: var(--spacing-6);
+  }
+
+  .likes-empty-icon {
+    font-size: 4rem;
+  }
+
+  .likes-empty-title {
+    font-size: var(--font-size-xl);
+  }
+}

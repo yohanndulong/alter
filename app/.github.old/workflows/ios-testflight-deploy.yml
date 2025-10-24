@@ -1,0 +1,510 @@
+name: Deploy to TestFlight
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: 'Environment'
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENV="production"
+          else
+            ENV="staging"
+          fi
+
+          echo "ENV=$ENV" >> $GITHUB_OUTPUT
+          echo "📱 Deploying to: $ENV"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build iOS app
+        run: |
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            echo "📱 Building for staging environment"
+            npm run build:ios:staging
+          else
+            echo "📱 Building for main/production environment"
+            npm run build:ios:main
+          fi
+
+      - name: Install CocoaPods dependencies
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install Fastlane
+        run: gem install fastlane
+
+      - name: Setup App Store Connect API Key
+        run: |
+          mkdir -p ~/.appstoreconnect
+
+          # Decode base64 key
+          if echo "$APP_STORE_CONNECT_API_KEY" | base64 -d > /dev/null 2>&1; then
+            KEY_CONTENT=$(echo "$APP_STORE_CONNECT_API_KEY" | base64 -d)
+          else
+            KEY_CONTENT="$APP_STORE_CONNECT_API_KEY"
+          fi
+
+          # Create API key JSON
+          python3 << 'PYTHON_EOF'
+          import json
+          import os
+
+          key_content = os.environ["KEY_CONTENT"]
+
+          api_key_data = {
+              "key_id": os.environ["APP_STORE_CONNECT_KEY_ID"],
+              "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
+              "key": key_content,
+              "in_house": False
+          }
+
+          with open(os.path.expanduser("~/.appstoreconnect/api_key.json"), "w") as f:
+              json.dump(api_key_data, f, indent=2)
+
+          print("✅ API Key JSON created")
+          PYTHON_EOF
+
+          chmod 600 ~/.appstoreconnect/api_key.json
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          KEY_CONTENT: ${{ env.KEY_CONTENT }}
+
+      - name: Download certificates from Match repo
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          APP_BUNDLE_ID: ${{ steps.env.outputs.ENV == 'staging' && 'com.alterdating.staging' || 'com.alterdating.alter' }}
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ github.workspace }}/api_key.json
+        run: |
+          # Verify API key JSON exists and is valid
+          echo "🔍 Verifying API key JSON..."
+          if [ ! -f ~/.appstoreconnect/api_key.json ]; then
+            echo "❌ ERROR: API key JSON not found at ~/.appstoreconnect/api_key.json"
+            exit 1
+          fi
+
+          # Display JSON structure (masking the private key)
+          python3 << 'PYTHON_EOF'
+          import json
+          with open("/Users/runner/.appstoreconnect/api_key.json", "r") as f:
+              data = json.load(f)
+          print(f"✅ JSON is valid")
+          print(f"   - key_id: {data['key_id']}")
+          print(f"   - issuer_id: {data['issuer_id'][:8]}...{data['issuer_id'][-8:]}")
+          print(f"   - key starts with: {data['key'][:29]}")
+          print(f"   - key ends with: {data['key'][-27:]}")
+          print(f"   - in_house: {data['in_house']}")
+          PYTHON_EOF
+
+          # Copy API key to workspace (Fastlane prefers this location)
+          cp ~/.appstoreconnect/api_key.json ${{ github.workspace }}/api_key.json
+          echo "✅ API key copied to workspace"
+
+          cd ios/App
+
+          echo "📝 Configuration de Fastlane Match..."
+          echo "🔑 API Key Path: $APP_STORE_CONNECT_API_KEY_PATH"
+
+          # Create Matchfile SANS api_key_path (on utilise la variable d'env)
+          cat > Matchfile <<EOF
+          git_url(ENV["MATCH_GIT_URL"])
+          storage_mode("git")
+          type("appstore")
+          git_branch("master")
+          app_identifier(["${APP_BUNDLE_ID}"])
+          readonly(true)
+          EOF
+
+          echo "📄 Matchfile contents:"
+          cat Matchfile
+
+          echo ""
+          echo "📋 Downloading certificates from Match repo..."
+
+          fastlane match appstore \
+            --app_identifier "${APP_BUNDLE_ID}" \
+            --readonly true
+
+      - name: Configure bundle identifier
+        run: |
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            BUNDLE_ID="com.alterdating.staging"
+          else
+            BUNDLE_ID="com.alterdating.alter"
+          fi
+
+          echo "🔧 Updating bundle ID to: $BUNDLE_ID"
+
+          cd ios/App
+
+          # Only update bundle identifier, leave signing alone
+          fastlane run update_app_identifier \
+            xcodeproj:"App.xcodeproj" \
+            plist_path:"App/Info.plist" \
+            app_identifier:"$BUNDLE_ID"
+
+          echo "✅ Bundle ID updated"
+
+      - name: Increment build number
+        run: |
+          cd ios/App
+          agvtool next-version -all
+          BUILD_NUMBER=$(agvtool what-version -terse)
+          echo "✅ Build number: $BUILD_NUMBER"
+
+      - name: Configure code signing for App target
+        run: |
+          cd ios/App
+
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            BUNDLE_ID="com.alterdating.staging"
+            PROFILE_NAME="match AppStore com.alterdating.staging"
+          else
+            BUNDLE_ID="com.alterdating.alter"
+            PROFILE_NAME="match AppStore com.alterdating.alter"
+          fi
+
+          # Configure manual signing ONLY for App target
+          fastlane run update_code_signing_settings \
+            path:"App.xcodeproj" \
+            targets:"App" \
+            use_automatic_signing:false \
+            team_id:"${{ secrets.TEAM_ID }}" \
+            code_sign_identity:"iPhone Distribution" \
+            profile_name:"$PROFILE_NAME" \
+            bundle_identifier:"$BUNDLE_ID"
+
+          echo "✅ Manual code signing configured for App target only"
+
+      - name: Configure App target build settings
+        run: |
+          cd ios/App
+
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            PROFILE_NAME="match AppStore com.alterdating.staging"
+          else
+            PROFILE_NAME="match AppStore com.alterdating.alter"
+          fi
+
+          # Install xcodeproj gem if needed
+          gem list -i xcodeproj || gem install xcodeproj
+
+          echo "📝 Configuring App target build settings..."
+
+          # Set CODE_SIGN_ON_COPY to NO and PROVISIONING_PROFILE_SPECIFIER for App target only
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('App.xcodeproj')
+          app_target = project.targets.find { |t| t.name == 'App' }
+
+          if app_target
+            puts '🔍 Found App target, updating build configurations...'
+            app_target.build_configurations.each do |config|
+              # Disable code signing on copy
+              old_copy_value = config.build_settings['CODE_SIGN_ON_COPY']
+              config.build_settings['CODE_SIGN_ON_COPY'] = 'NO'
+              puts \"  - #{config.name}: CODE_SIGN_ON_COPY changed from '#{old_copy_value}' to 'NO'\"
+
+              # Set provisioning profile for Release configuration
+              if config.name == 'Release'
+                config.build_settings['PROVISIONING_PROFILE_SPECIFIER'] = '${PROFILE_NAME}'
+                puts \"  - #{config.name}: PROVISIONING_PROFILE_SPECIFIER = '${PROFILE_NAME}'\"
+              end
+            end
+            project.save
+            puts '✅ App target build settings configured'
+          else
+            puts '❌ App target not found'
+            exit 1
+          end
+          "
+
+          # Verify the changes were applied
+          echo ""
+          echo "🔍 Verifying App target settings..."
+          ruby -e "
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('App.xcodeproj')
+          app_target = project.targets.find { |t| t.name == 'App' }
+          app_target.build_configurations.each do |config|
+            copy_value = config.build_settings['CODE_SIGN_ON_COPY']
+            profile_value = config.build_settings['PROVISIONING_PROFILE_SPECIFIER']
+            puts \"  - #{config.name}: CODE_SIGN_ON_COPY = '#{copy_value}', PROVISIONING_PROFILE_SPECIFIER = '#{profile_value}'\"
+          end
+          "
+
+      - name: Enable debug mode for Embed Pods Frameworks script
+        run: |
+          cd ios/App
+
+          SCRIPT_PATH="Pods/Target Support Files/Pods-App/Pods-App-frameworks.sh"
+
+          if [ -f "$SCRIPT_PATH" ]; then
+            echo "🔍 Found Pods framework embedding script at: $SCRIPT_PATH"
+            echo "📝 Adding debug output and disabling code signing in embed script..."
+
+            # Backup the original script
+            cp "$SCRIPT_PATH" "${SCRIPT_PATH}.backup"
+
+            # Create wrapper script with debug mode and disabled signing
+            echo '#!/bin/bash' > "${SCRIPT_PATH}.tmp"
+            echo 'exec > >(tee /tmp/embed_pods_debug.log) 2>&1' >> "${SCRIPT_PATH}.tmp"
+            echo 'set -x  # Enable debug mode' >> "${SCRIPT_PATH}.tmp"
+            echo 'echo "🚀 [CP] Embed Pods Frameworks script started at $(date)"' >> "${SCRIPT_PATH}.tmp"
+            echo 'echo "🔍 Current directory: $(pwd)"' >> "${SCRIPT_PATH}.tmp"
+            echo 'echo "🔍 Available environment variables:"' >> "${SCRIPT_PATH}.tmp"
+            echo 'env | grep -E "CODE_SIGN|IDENTITY" || echo "No signing vars"' >> "${SCRIPT_PATH}.tmp"
+            echo 'export CODE_SIGNING_REQUIRED=NO' >> "${SCRIPT_PATH}.tmp"
+            echo 'export CODE_SIGNING_ALLOWED=NO' >> "${SCRIPT_PATH}.tmp"
+            echo 'export EXPANDED_CODE_SIGN_IDENTITY=""' >> "${SCRIPT_PATH}.tmp"
+            echo 'export EXPANDED_CODE_SIGN_IDENTITY_NAME=""' >> "${SCRIPT_PATH}.tmp"
+            echo 'echo "✅ Code signing disabled in script"' >> "${SCRIPT_PATH}.tmp"
+            echo '' >> "${SCRIPT_PATH}.tmp"
+
+            # Append the original script content (skip the shebang)
+            tail -n +2 "${SCRIPT_PATH}.backup" >> "${SCRIPT_PATH}.tmp"
+
+            # Add completion message
+            echo '' >> "${SCRIPT_PATH}.tmp"
+            echo 'echo "✅ [CP] Embed Pods Frameworks script completed at $(date)"' >> "${SCRIPT_PATH}.tmp"
+
+            # Replace the original with our wrapped version
+            mv "${SCRIPT_PATH}.tmp" "$SCRIPT_PATH"
+            chmod +x "$SCRIPT_PATH"
+
+            echo "✅ Debug mode enabled and code signing disabled for Embed Pods Frameworks script"
+            echo ""
+            echo "📄 First 15 lines of modified script:"
+            head -15 "$SCRIPT_PATH"
+          else
+            echo "⚠️ Pods framework script not found at $SCRIPT_PATH"
+            echo "   Listing Pods directory structure:"
+            ls -la Pods/Target\ Support\ Files/ 2>/dev/null || echo "Pods/Target Support Files not found"
+          fi
+
+      - name: Verify code signing configuration
+        run: |
+          cd ios/App
+
+          # Verify code signing settings
+          echo "🔍 Verifying code signing configuration..."
+          xcodebuild -project App.xcodeproj -target App -showBuildSettings -configuration Release | grep -E "CODE_SIGN_STYLE|CODE_SIGN_ON_COPY|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER|PRODUCT_BUNDLE_IDENTIFIER" | head -15
+
+      - name: Unlock keychain
+        run: |
+          # Unlock the default keychain to prevent hanging on code sign prompts
+          security unlock-keychain -p "" ~/Library/Keychains/login.keychain-db || true
+          security set-keychain-settings -t 3600 -l ~/Library/Keychains/login.keychain-db || true
+
+          echo "✅ Keychain unlocked for build"
+
+      - name: Build and Archive app
+        timeout-minutes: 5
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+        run: |
+          cd ios/App
+
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            BUNDLE_ID="com.alterdating.staging"
+            PROFILE_NAME="match AppStore com.alterdating.staging"
+          else
+            BUNDLE_ID="com.alterdating.alter"
+            PROFILE_NAME="match AppStore com.alterdating.alter"
+          fi
+
+          echo "📦 Building and archiving for $BUNDLE_ID..."
+
+          # Monitor resources in background
+          (while true; do
+            echo "[$(date +%H:%M:%S)] Memory: $(vm_stat | grep 'Pages free' | awk '{print $3}') free pages, Load: $(uptime | awk -F'load averages:' '{print $2}')"
+            sleep 30
+          done) &
+          MONITOR_PID=$!
+
+          # Create directories
+          mkdir -p ./build
+          mkdir -p ./logs
+
+          # Create ExportOptions.plist
+          cat > ExportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>${{ secrets.TEAM_ID }}</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>$BUNDLE_ID</key>
+                  <string>$PROFILE_NAME</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+
+          echo "🔨 Starting direct xcodebuild archive (bypassing fastlane)..."
+
+          # Archive using xcodebuild with minimal overrides
+          # Let project settings (configured by fastlane match and Ruby script) handle signing
+          # Disable Swift libs embedding to prevent hanging on builtin-swiftStdLibTool --sign
+          xcodebuild archive \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath ./build/App.xcarchive \
+            -allowProvisioningUpdates \
+            DEBUG_INFORMATION_FORMAT=dwarf \
+            STRIP_SWIFT_SYMBOLS=NO \
+            COPY_PHASE_STRIP=NO \
+            ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES=NO \
+            | tee ./logs/archive.log
+
+          echo "✅ Archive created"
+
+          echo "📦 Exporting IPA from archive..."
+
+          # Export IPA using xcodebuild directly
+          xcodebuild -exportArchive \
+            -archivePath ./build/App.xcarchive \
+            -exportPath ./build \
+            -exportOptionsPlist ExportOptions.plist \
+            -allowProvisioningUpdates \
+            | tee ./logs/export.log
+
+          # Kill the monitoring process
+          kill $MONITOR_PID 2>/dev/null || true
+
+          echo "✅ Build and export completed successfully"
+          ls -lh ./build/
+
+          # Show last 100 lines of archive log
+          if [ -f "./logs/archive.log" ]; then
+            echo ""
+            echo "📋 Last 100 lines of archive log:"
+            tail -100 ./logs/archive.log
+          fi
+
+          # Show last 50 lines of export log
+          if [ -f "./logs/export.log" ]; then
+            echo ""
+            echo "📋 Last 50 lines of export log:"
+            tail -50 ./logs/export.log
+          fi
+
+          # Show Embed Pods debug log
+          if [ -f "/tmp/embed_pods_debug.log" ]; then
+            echo ""
+            echo "📋 Embed Pods Frameworks debug log:"
+            cat /tmp/embed_pods_debug.log
+          fi
+
+      - name: Show Embed Pods debug log on failure
+        if: failure()
+        run: |
+          echo "🔍 Checking for Embed Pods Frameworks debug log..."
+          if [ -f "/tmp/embed_pods_debug.log" ]; then
+            echo ""
+            echo "📋 Embed Pods Frameworks debug log:"
+            cat /tmp/embed_pods_debug.log
+          else
+            echo "⚠️ No debug log found at /tmp/embed_pods_debug.log"
+            echo "   This means the script was never executed or failed before creating the log"
+          fi
+
+      - name: Upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ github.workspace }}/api_key.json
+        run: |
+          cd ios/App
+
+          if [ "${{ steps.env.outputs.ENV }}" == "staging" ]; then
+            APP_ID="${{ secrets.APPLE_ID_STAGING }}"
+            BUNDLE_ID="com.alterdating.staging"
+          else
+            APP_ID="${{ secrets.APPLE_ID_PRODUCTION }}"
+            BUNDLE_ID="com.alterdating.alter"
+          fi
+
+          # Find the IPA file in the build directory
+          IPA_PATH=$(find ./build -name "*.ipa" -type f | head -1)
+
+          if [ -z "$IPA_PATH" ]; then
+            echo "❌ No IPA file found in ./build directory"
+            echo "Contents of ./build:"
+            ls -la ./build/
+            exit 1
+          fi
+
+          echo "🚀 Uploading to TestFlight..."
+          echo "   App ID: $APP_ID"
+          echo "   Bundle ID: $BUNDLE_ID"
+          echo "   IPA: $IPA_PATH"
+
+          fastlane pilot upload \
+            --ipa "$IPA_PATH" \
+            --app_identifier "$BUNDLE_ID" \
+            --apple_id "$APP_ID" \
+            --skip_waiting_for_build_processing \
+            --changelog "Build from GitHub Actions"
+
+          echo "✅ Upload complete!"
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Successfully deployed to TestFlight!"
+          echo "Environment: ${{ steps.env.outputs.ENV }}"
+          echo "Check TestFlight in ~10-30 minutes for the new build"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          echo "Check the logs above for errors"

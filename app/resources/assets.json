@@ -1,0 +1,11 @@
+{
+  "android": {
+    "icon": {
+      "sources": ["icon.svg"],
+      "foreground": "icon.svg"
+    },
+    "splash": {
+      "sources": ["icon.svg"]
+    }
+  }
+}

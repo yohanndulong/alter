@@ -1,0 +1,167 @@
+name: Setup iOS Certificates (Run once)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-certificates:
+    runs-on: macos-13  # Use Intel runner instead of ARM64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install Fastlane
+        run: gem install fastlane
+
+      - name: Create Fastlane Match Repo
+        run: |
+          echo "📋 Instructions:"
+          echo "1. Créez un repo GitHub privé nommé 'alter-ios-certificates'"
+          echo "2. Ajoutez MATCH_GIT_URL dans les secrets GitHub"
+          echo "3. Relancez ce workflow"
+
+      - name: Setup App Store Connect API Key
+        run: |
+          # Create the API key JSON file with proper escaping
+          mkdir -p $HOME/.appstoreconnect
+
+          # Decode base64 key if it's encoded, otherwise use as-is
+          if echo "$APP_STORE_CONNECT_API_KEY" | base64 -d > /dev/null 2>&1; then
+            echo "🔑 Decoding base64 encoded key..."
+            KEY_CONTENT=$(echo "$APP_STORE_CONNECT_API_KEY" | base64 -d)
+          else
+            echo "🔑 Using key as plain text..."
+            KEY_CONTENT="$APP_STORE_CONNECT_API_KEY"
+          fi
+
+          # Use Python to create properly formatted JSON with proper escaping
+          python3 << 'PYTHON_EOF'
+          import json
+          import os
+
+          # Get the key content and ensure it's a proper string with \n
+          key_content = os.environ["KEY_CONTENT"]
+
+          # Debug: check if key has actual newlines or \n literals
+          newline_count = key_content.count('\n')
+          print(f"🔍 Key has {newline_count} actual newlines")
+
+          # Make sure the key has actual newlines, not \n literals
+          if newline_count < 3:  # A valid key should have multiple lines
+              print("⚠️  Key might have \\n literals instead of actual newlines, trying to fix...")
+              key_content = key_content.replace('\\n', '\n')
+              print(f"🔍 After fix: {key_content.count(chr(10))} newlines")
+
+          api_key_data = {
+              "key_id": os.environ["APP_STORE_CONNECT_KEY_ID"],
+              "issuer_id": os.environ["APP_STORE_CONNECT_ISSUER_ID"],
+              "key": key_content,
+              "in_house": False,
+              "duration": 1200
+          }
+
+          with open(os.path.expanduser("~/.appstoreconnect/api_key.json"), "w") as f:
+              json.dump(api_key_data, f, indent=2)
+
+          print("✅ API Key JSON created successfully")
+          PYTHON_EOF
+
+          chmod 600 $HOME/.appstoreconnect/api_key.json
+
+          # Verify JSON is valid
+          python3 -m json.tool $HOME/.appstoreconnect/api_key.json > /dev/null && echo "✅ JSON is valid"
+
+          # Show the key structure (first/last lines only, for debugging)
+          echo "🔍 Key structure check:"
+          echo "$KEY_CONTENT" | head -n 1
+          echo "..."
+          echo "$KEY_CONTENT" | tail -n 1
+
+          # Debug: Show Key ID and Issuer ID (masked partially)
+          echo "🔍 Configuration check:"
+          echo "Key ID: ${APP_STORE_CONNECT_KEY_ID:0:3}***${APP_STORE_CONNECT_KEY_ID: -3}"
+          echo "Issuer ID: ${APP_STORE_CONNECT_ISSUER_ID:0:8}***"
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          KEY_CONTENT: ${{ env.KEY_CONTENT }}
+
+      - name: Verify API Key JSON Format
+        run: |
+          echo "🔍 Verifying API Key JSON format..."
+
+          # Check the JSON structure
+          python3 << 'PYTHON_EOF'
+          import json
+          import os
+
+          with open(os.path.expanduser("~/.appstoreconnect/api_key.json"), "r") as f:
+              data = json.load(f)
+
+          print(f"✅ key_id length: {len(data['key_id'])}")
+          print(f"✅ issuer_id format: {data['issuer_id'][:8]}...{data['issuer_id'][-8:]}")
+          print(f"✅ key starts with: {data['key'][:29]}")
+          print(f"✅ key ends with: {data['key'][-27:]}")
+          print(f"✅ key line count: {data['key'].count(chr(10)) + 1}")
+          print(f"✅ in_house: {data['in_house']}")
+
+          # Verify the key is valid PEM format
+          if not data['key'].startswith("-----BEGIN PRIVATE KEY-----"):
+              print("❌ ERROR: Key doesn't start with -----BEGIN PRIVATE KEY-----")
+              exit(1)
+          if not data['key'].strip().endswith("-----END PRIVATE KEY-----"):
+              print("❌ ERROR: Key doesn't end with -----END PRIVATE KEY-----")
+              exit(1)
+
+          print("✅ Key format looks correct!")
+          PYTHON_EOF
+        continue-on-error: true
+
+      - name: Generate Certificates with Match
+        env:
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          APP_STORE_CONNECT_API_KEY_PATH: ${{ github.workspace }}/api_key.json
+        run: |
+          # Copy API key to workspace (Fastlane prefers this location)
+          cp $HOME/.appstoreconnect/api_key.json ${{ github.workspace }}/api_key.json
+
+          cd ios/App
+
+          echo "📝 Configuration de Fastlane Match..."
+          echo "🔑 API Key Path: $APP_STORE_CONNECT_API_KEY_PATH"
+
+          # Créer le Matchfile SANS api_key_path (on utilise la variable d'env)
+          cat > Matchfile <<EOF
+          git_url(ENV["MATCH_GIT_URL"])
+          storage_mode("git")
+          type("appstore")
+          app_identifier(["com.alterdating.alter", "com.alterdating.staging"])
+          EOF
+
+          echo "📄 Matchfile contents:"
+          cat Matchfile
+
+          echo ""
+          echo "🔐 Génération des certificats pour Staging..."
+          fastlane match appstore \
+            --app_identifier com.alterdating.staging \
+            --readonly false \
+            --verbose
+
+          echo ""
+          echo "🔐 Génération des certificats pour Production..."
+          fastlane match appstore \
+            --app_identifier com.alterdating.alter \
+            --readonly false \
+            --verbose
+
+          echo "✅ Certificats générés et stockés dans le repo sécurisé!"

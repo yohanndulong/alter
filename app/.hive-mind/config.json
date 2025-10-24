@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "initialized": "2025-09-30T14:57:04.154Z",
+  "defaults": {
+    "queenType": "strategic",
+    "maxWorkers": 8,
+    "consensusAlgorithm": "majority",
+    "memorySize": 100,
+    "autoScale": true,
+    "encryption": false
+  },
+  "mcpTools": {
+    "enabled": true,
+    "parallel": true,
+    "timeout": 60000
+  }
+}

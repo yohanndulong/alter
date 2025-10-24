@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Chemin externe pour les images (galerie, téléchargements, etc.) -->
+    <external-path name="my_images" path="." />
+
+    <!-- Chemin du cache pour les images temporaires -->
+    <cache-path name="my_cache_images" path="." />
+
+    <!-- Chemin des fichiers de l'application -->
+    <files-path name="app_files" path="." />
+
+    <!-- Chemin externe des photos/médias -->
+    <external-files-path name="external_files" path="." />
+
+    <!-- Chemin pour DCIM (photos de l'appareil photo) -->
+    <external-path name="camera_photos" path="DCIM" />
+</paths>

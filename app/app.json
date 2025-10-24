@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Alter - Dating App",
+    "slug": "alter-app",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.alterdating.alter",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.alterdating.alter",
+      "versionCode": 1
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f7635a91-0f26-486c-a5e4-395e07650158",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": []
+            }
+          }
+        }
+      }
+    },
+    "plugins": []
+  }
+}

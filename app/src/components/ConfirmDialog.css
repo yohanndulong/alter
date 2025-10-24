@@ -1,0 +1,101 @@
+.confirm-dialog {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-6);
+  text-align: center;
+}
+
+.confirm-dialog__icon {
+  font-size: 3rem;
+  line-height: 1;
+  animation: bounceIn 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.confirm-dialog__title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.confirm-dialog__message {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+  max-width: 400px;
+}
+
+.confirm-dialog__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.confirm-dialog__actions-main {
+  display: flex;
+  gap: var(--spacing-3);
+  width: 100%;
+}
+
+.confirm-dialog__button {
+  flex: 1;
+}
+
+.confirm-dialog__custom-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: var(--spacing-2);
+}
+
+.already-liked-modal-actions {
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .confirm-dialog {
+    padding: var(--spacing-4);
+    gap: var(--spacing-3);
+  }
+
+  .confirm-dialog__icon {
+    font-size: 2.5rem;
+  }
+
+  .confirm-dialog__title {
+    font-size: var(--font-size-lg);
+  }
+
+  .confirm-dialog__message {
+    font-size: var(--font-size-sm);
+  }
+
+  .confirm-dialog__actions,
+  .confirm-dialog__actions-main {
+    flex-direction: column-reverse;
+  }
+}
