@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Logo, LoadingMoreIndicator } from '@/components'
 import { chatService } from '@/services/chat'
 import { ChatMessage } from '@/types'
-import { useToast, useBackButtonNavigation } from '@/hooks'
+import { useToast, useBackButtonNavigation, useAlterMessages, useAddAlterMessageToCache, chatKeys } from '@/hooks'
 import { useAuth } from '@/contexts/AuthContext'
 import { parseMarkdown } from '@/utils/markdown'
 import { formatMessageTime } from '@/utils/date'
@@ -18,9 +19,12 @@ export const AlterChat: React.FC = () => {
   const intentionMenuRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  // React Query - Charger les messages avec cache automatique
+  const queryClient = useQueryClient()
+  const { data: messages = [], isLoading } = useAlterMessages()
+  const addMessageToCache = useAddAlterMessageToCache()
+
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [intention, setIntention] = useState<'personality' | 'friendship' | 'love' | 'carnal'>('personality')
   const [showIntentionMenu, setShowIntentionMenu] = useState(false)
@@ -30,7 +34,6 @@ export const AlterChat: React.FC = () => {
   const [showProfileDetails, setShowProfileDetails] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
-  const [isLoadedFromCache, setIsLoadedFromCache] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastScrollHeight = useRef<number>(0)
 
@@ -46,26 +49,22 @@ export const AlterChat: React.FC = () => {
 
     // Listen for incoming Alter messages
     chatService.onAlterMessage((message: ChatMessage) => {
-      setMessages(prev => {
-        const updated = [...prev, message]
-        // Sauvegarder dans le secure storage (fire and forget)
-        alterChatStorage.addMessage(message)
-        return updated
-      })
+      // Ajouter au cache React Query et au storage persistant
+      addMessageToCache(message)
+
       // Only stop loading indicator when Alter (assistant) responds
       if (message.role === 'assistant') {
         setIsSending(false)
       }
     })
 
-    // Load message history
-    loadMessages()
+    // Note: React Query charge automatiquement l'historique via useAlterMessages()
 
     // Cleanup on unmount
     return () => {
       chatService.disconnectAlterChat()
     }
-  }, [user?.id])
+  }, [user?.id, addMessageToCache])
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -136,57 +135,18 @@ export const AlterChat: React.FC = () => {
     }
   }, [showProfileDetails])
 
-  const loadMessages = async () => {
-    if (!user?.id) return
-
-    try {
-      // 1. Charger d'abord depuis le secure storage pour un affichage instantané
-      const cachedMessages = await alterChatStorage.loadMessages()
-
-      if (cachedMessages.length > 0) {
-        setMessages(cachedMessages)
-        setIsLoadedFromCache(true)
-        setIsLoading(false)
-        setTimeout(() => scrollToBottom(), 100)
+  // Initialiser le message de bienvenue si aucun message n'existe
+  useEffect(() => {
+    if (!isLoading && messages.length === 0) {
+      const welcomeMessage: ChatMessage = {
+        id: 'welcome',
+        role: 'assistant' as const,
+        content: t('chat.alterWelcome'),
+        timestamp: new Date(),
       }
-
-      // 2. Ensuite, charger les derniers messages depuis le serveur en arrière-plan
-      const serverMessages = await chatService.loadAlterHistory(50)
-
-      if (serverMessages.length === 0 && cachedMessages.length === 0) {
-        // Aucun message, afficher le message de bienvenue
-        const welcomeMessage = {
-          id: 'welcome',
-          role: 'assistant' as const,
-          content: t('chat.alterWelcome'),
-          timestamp: new Date(),
-        }
-        setMessages([welcomeMessage])
-        await alterChatStorage.saveMessages([welcomeMessage])
-      } else if (serverMessages.length > 0) {
-        // Mettre à jour avec les messages du serveur
-        setMessages(serverMessages)
-        await alterChatStorage.saveMessages(serverMessages)
-
-        // Si on avait chargé depuis le cache, maintenant on a les données à jour
-        if (isLoadedFromCache) {
-          setTimeout(() => scrollToBottom(), 100)
-        }
-      }
-    } catch (err) {
-      showError(t('common.error'))
-      // Si le chargement serveur échoue mais qu'on a le cache, garder le cache
-      if (!isLoadedFromCache) {
-        const cachedMessages = await alterChatStorage.loadMessages()
-        if (cachedMessages.length > 0) {
-          setMessages(cachedMessages)
-        }
-      }
-    } finally {
-      setIsLoading(false)
-      setIsLoadedFromCache(false)
+      addMessageToCache(welcomeMessage)
     }
-  }
+  }, [isLoading, messages.length])
 
   const loadMoreMessages = async () => {
     if (!user?.id || isLoadingMore || !hasMoreMessages) return
@@ -209,11 +169,15 @@ export const AlterChat: React.FC = () => {
           lastScrollHeight.current = container.scrollHeight
         }
 
-        // Ajouter les anciens messages au début
-        setMessages(prev => [...olderMessages, ...prev])
+        // Ajouter les anciens messages au début du cache React Query
+        const updatedMessages = [...olderMessages, ...messages]
+        queryClient.setQueryData<ChatMessage[]>(
+          chatKeys.alterMessages(),
+          updatedMessages
+        )
 
         // Mettre à jour le secure storage avec tous les messages
-        await alterChatStorage.saveMessages([...olderMessages, ...messages])
+        await alterChatStorage.saveMessages(updatedMessages)
 
         // Restaurer la position du scroll après que les nouveaux messages soient rendus
         setTimeout(() => {

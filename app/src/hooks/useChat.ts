@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { chatService } from '@/services/chat'
 import { Message, ChatMessage } from '@/types'
 import { userChatStorage } from '@/utils/userChatStorage'
+import { alterChatStorage } from '@/utils/alterChatStorage'
 
 /**
  * Query keys pour les hooks de chat
@@ -71,19 +72,48 @@ export function useMessages(matchId: string | undefined, limit?: number) {
 
 /**
  * Hook pour récupérer les messages Alter Chat
- * Charge l'historique initial via WebSocket
+ * Charge d'abord depuis le cache local (alterChatStorage) pour affichage instantané
+ * Puis fetch depuis le serveur en arrière-plan
  * WebSocket gère les mises à jour en temps réel
  */
 export function useAlterMessages() {
-  return useQuery({
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
     queryKey: chatKeys.alterMessages(),
     queryFn: async () => {
-      // Charger via WebSocket
+      // Charger depuis le serveur via WebSocket
       chatService.initAlterChatSocket()
-      return chatService.loadAlterHistory(50)
+      const serverMessages = await chatService.loadAlterHistory(50)
+
+      // Sauvegarder dans le cache persistant
+      await alterChatStorage.saveMessages(serverMessages)
+
+      return serverMessages
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
+
+  // Charger le cache local de manière asynchrone au premier rendu
+  useEffect(() => {
+    const loadCache = async () => {
+      const cachedMessages = await alterChatStorage.loadMessages()
+      if (cachedMessages.length > 0) {
+        // Pré-remplir le cache React Query avec les données locales
+        queryClient.setQueryData<ChatMessage[]>(
+          chatKeys.alterMessages(),
+          cachedMessages
+        )
+      }
+    }
+
+    // Charger le cache uniquement si on n'a pas encore de données
+    if (!query.data || query.data.length === 0) {
+      loadCache()
+    }
+  }, [queryClient])
+
+  return query
 }
 
 /**
@@ -141,14 +171,19 @@ export function useAddMessageToCache() {
 
 /**
  * Helper pour ajouter un message Alter au cache
+ * Sauvegarde aussi dans le cache persistant
  */
 export function useAddAlterMessageToCache() {
   const queryClient = useQueryClient()
 
-  return (message: ChatMessage) => {
-    queryClient.setQueryData<ChatMessage[]>(
+  return async (message: ChatMessage) => {
+    // Mettre à jour le cache React Query
+    const updatedMessages = queryClient.setQueryData<ChatMessage[]>(
       chatKeys.alterMessages(),
       (old = []) => [...old, message]
     )
+
+    // Sauvegarder dans le cache persistant
+    await alterChatStorage.addMessage(message)
   }
 }
