@@ -110,4 +110,38 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+}
+
+/* Indicateur de swipe (petit trait en haut) */
+.modal__swipe-indicator {
+  width: 40px;
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  margin: var(--spacing-2) auto var(--spacing-1) auto;
+  flex-shrink: 0;
+}
+
+/* Sur mobile, rendre l'indicateur plus visible */
+@media (max-width: 768px) {
+  .modal__swipe-indicator {
+    background: var(--color-text-tertiary);
+  }
+}
+
+/* Animation de fermeture au swipe */
+.modal.modal--closing {
+  animation: modal-slide-down 0.3s ease-out forwards;
+}
+
+@keyframes modal-slide-down {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
 }
