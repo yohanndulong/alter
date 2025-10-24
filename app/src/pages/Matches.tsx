@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ProfileModal, Logo, CachedImage, Badge } from '@/components'
+import { ProfileModal, Logo, CachedImage, Badge, LoadingMoreIndicator } from '@/components'
 import { matchingService } from '@/services/matching'
 import { Match } from '@/types'
 import { useToast } from '@/hooks'
 import { formatRelativeTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
+import { matchesStorage } from '@/utils/matchesStorage'
 import './Matches.css'
 
 export const Matches: React.FC = () => {
@@ -16,6 +17,7 @@ export const Matches: React.FC = () => {
 
   const [matches, setMatches] = useState<Match[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
   const [conversationsStatus, setConversationsStatus] = useState<{
     activeConversations: number
@@ -25,7 +27,7 @@ export const Matches: React.FC = () => {
   } | null>(null)
 
   useEffect(() => {
-    loadMatches()
+    loadMatchesWithCache()
     loadConversationsStatus()
   }, [])
 
@@ -38,21 +40,47 @@ export const Matches: React.FC = () => {
     }
   }
 
-  const loadMatches = async () => {
-    setIsLoading(true)
+  const sortMatches = (data: Match[]): Match[] => {
+    return data.sort((a, b) => {
+      if (!a.lastMessageAt) return 1
+      if (!b.lastMessageAt) return -1
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    })
+  }
+
+  const loadMatchesWithCache = async () => {
     try {
-      const data = await matchingService.getMatches()
-      // Trier par date du dernier message (plus récent en premier)
-      const sortedData = data.sort((a, b) => {
-        if (!a.lastMessageAt) return 1
-        if (!b.lastMessageAt) return -1
-        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-      })
+      // 1. Charger immédiatement le cache s'il existe
+      const { matches: cachedMatches, shouldRefresh } = await matchesStorage.loadMatchesWithStatus()
+
+      if (cachedMatches && cachedMatches.length > 0) {
+        // Afficher les données en cache immédiatement
+        const sortedCached = sortMatches(cachedMatches)
+        setMatches(sortedCached)
+        setIsLoading(false)
+
+        // Si le cache est valide, on passe en mode rafraîchissement
+        if (!shouldRefresh) {
+          return
+        }
+        setIsRefreshing(true)
+      }
+
+      // 2. Charger les données fraîches depuis l'API
+      const freshData = await matchingService.getMatches()
+      const sortedData = sortMatches(freshData)
+
+      // 3. Mettre à jour l'état et le cache
       setMatches(sortedData)
-    } catch (err) {
-      showError(t('common.error'))
+      await matchesStorage.saveMatches(freshData)
+    } catch (err: any) {
+      // Ne montrer l'erreur que si on n'a pas de cache
+      if (matches.length === 0) {
+        showError(t('common.error'))
+      }
     } finally {
       setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -74,10 +102,12 @@ export const Matches: React.FC = () => {
     }
   }
 
-  if (isLoading) {
+  if (isLoading && matches.length === 0) {
     return (
       <div className="matches-container">
-        <div className="matches-loading">{t('common.loading')}</div>
+        <div className="matches-loading-container">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

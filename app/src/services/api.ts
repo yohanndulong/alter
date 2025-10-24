@@ -2,6 +2,14 @@ const API_BASE_URL = import.meta.env.VITE_ENABLE_MOCKS === 'true'
   ? '/api'
   : (import.meta.env.VITE_API_URL || '/api')
 
+// Fonction pour notifier les erreurs réseau au contexte
+// Sera initialisée par le NetworkProvider
+let networkErrorNotifier: ((error: any) => void) | null = null
+
+export const setNetworkErrorNotifier = (notifier: (error: any) => void) => {
+  networkErrorNotifier = notifier
+}
+
 class ApiService {
   private getHeaders(): HeadersInit {
     const token = localStorage.getItem('auth_token')
@@ -22,25 +30,69 @@ class ApiService {
         ...this.getHeaders(),
         ...options?.headers,
       },
+      // Timeout de 30 secondes
+      signal: options?.signal || AbortSignal.timeout(30000),
     }
 
-    const response = await fetch(url, config)
+    try {
+      const response = await fetch(url, config)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({
-        message: 'An error occurred',
-      }))
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({
+          message: 'An error occurred',
+        }))
 
-      // Créer une erreur avec toutes les données de l'API
-      const error: any = new Error(errorData.message || `HTTP ${response.status}`)
-      error.response = {
-        status: response.status,
-        data: errorData
+        // Créer une erreur avec toutes les données de l'API
+        const error: any = new Error(errorData.message || `HTTP ${response.status}`)
+        error.response = {
+          status: response.status,
+          data: errorData
+        }
+
+        // Notifier si c'est une erreur serveur (5xx)
+        if (response.status >= 500 && networkErrorNotifier) {
+          networkErrorNotifier({
+            message: 'Erreur serveur, veuillez réessayer',
+            timestamp: Date.now(),
+            type: 'server_error'
+          })
+        }
+
+        throw error
       }
+
+      return response.json()
+    } catch (error: any) {
+      // Détecter les erreurs réseau spécifiques
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        // Erreur réseau (pas de connexion)
+        if (networkErrorNotifier) {
+          networkErrorNotifier({
+            message: 'Impossible de se connecter au serveur',
+            timestamp: Date.now(),
+            type: 'offline'
+          })
+        }
+        const networkError: any = new Error('Pas de connexion internet')
+        networkError.isNetworkError = true
+        throw networkError
+      } else if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+        // Timeout
+        if (networkErrorNotifier) {
+          networkErrorNotifier({
+            message: 'La connexion est trop lente',
+            timestamp: Date.now(),
+            type: 'timeout'
+          })
+        }
+        const timeoutError: any = new Error('Délai d\'attente dépassé')
+        timeoutError.isTimeoutError = true
+        throw timeoutError
+      }
+
+      // Re-lancer l'erreur originale si ce n'est pas une erreur réseau
       throw error
     }
-
-    return response.json()
   }
 
   async get<T>(endpoint: string): Promise<T> {

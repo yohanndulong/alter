@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { UnreadCountProvider } from './contexts/UnreadCountContext'
-import { ToastContainer, BottomNav } from './components'
+import { NetworkProvider } from './contexts/NetworkContext'
+import { ToastContainer, BottomNav, NetworkStatus } from './components'
 import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
 
@@ -121,6 +122,7 @@ const AppRoutes: React.FC = () => {
 
   return (
     <>
+      <NetworkStatus />
       <Routes>
         <Route
           path="/login"
@@ -238,13 +240,15 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <UnreadCountProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </UnreadCountProvider>
-      </AuthProvider>
+      <NetworkProvider>
+        <AuthProvider>
+          <UnreadCountProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </UnreadCountProvider>
+        </AuthProvider>
+      </NetworkProvider>
     </ThemeProvider>
   )
 }
