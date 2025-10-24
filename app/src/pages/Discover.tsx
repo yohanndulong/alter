@@ -5,6 +5,7 @@ import { ProfileCard, Modal, Button, CompatibilityListItem, CompatibilityFilter,
 import { User, Match, DiscoverViewMode, RelationshipFilter } from '@/types'
 import { useToast, useDiscoverProfiles, useConversationsStatus, useInterestedProfiles } from '@/hooks'
 import { api } from '@/services/api'
+import { matchingService } from '@/services/matching'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { matchingKeys } from '@/hooks/useMatching'
@@ -260,7 +261,7 @@ export const Discover: React.FC = () => {
       })
 
       // Reload profiles with new filters
-      await loadProfiles()
+      reloadProfiles()
 
       setFilterModalOpen(false)
       success('Filtres appliqués')
@@ -372,7 +373,7 @@ export const Discover: React.FC = () => {
           <div className="discover-empty">
             <h2 className="discover-empty-title">{t('discover.noMoreProfiles')}</h2>
             <p className="discover-empty-text">{t('discover.comeBackLater')}</p>
-            <Button variant="primary" onClick={loadProfiles}>
+            <Button variant="primary" onClick={reloadProfiles}>
               {t('common.continue')}
             </Button>
           </div>

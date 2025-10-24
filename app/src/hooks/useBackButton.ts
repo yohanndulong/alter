@@ -26,7 +26,6 @@ export function useBackButton(
   onBack: () => void | boolean,
   enabled: boolean = true
 ) {
-  const navigate = useNavigate()
   const onBackRef = useRef(onBack)
   const stateIdRef = useRef<string | null>(null)
 

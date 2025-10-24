@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage, VoiceRecorder, CameraCapture, LoadingMoreIndicator } from '@/components'
 import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message, Match, PhotoViewMode } from '@/types'
-import { useToast, usePrivacyScreen, useBackButtonNavigation } from '@/hooks'
+import { useToast, usePrivacyScreen, useBackButtonNavigation, useMessages, useAddMessageToCache, chatKeys } from '@/hooks'
 import { formatTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,9 +25,12 @@ export const Chat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [match, setMatch] = useState<Match | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(true)
+
+  // React Query - Charger les messages avec cache automatique
+  const queryClient = useQueryClient()
+  const { data: messages = [], isLoading } = useMessages(matchId)
+  const addMessageToCache = useAddMessageToCache()
   const [isSending, setIsSending] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showQualityModal, setShowQualityModal] = useState(false)
@@ -42,7 +46,6 @@ export const Chat: React.FC = () => {
   const [readMessages, setReadMessages] = useState<Set<string>>(new Set())
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
-  const [isLoadedFromCache, setIsLoadedFromCache] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -61,7 +64,6 @@ export const Chat: React.FC = () => {
     if (!matchId || !user?.id) return
 
     loadMatch()
-    loadMessages()
 
     // Initialiser le WebSocket et rejoindre la room du match
     const socket = chatService.initChatSocket()
@@ -70,14 +72,10 @@ export const Chat: React.FC = () => {
     // Fonction handler pour les nouveaux messages
     const handleMessage = (message: Message) => {
       console.log('📨 New message received:', message)
-      setMessages(prev => {
-        const updated = [...prev, message]
-        // Sauvegarder dans le secure storage (fire and forget)
-        if (matchId) {
-          userChatStorage.addMessage(matchId, message)
-        }
-        return updated
-      })
+
+      // Ajouter le message au cache React Query au lieu du state
+      addMessageToCache(matchId, message)
+
       // Envoyer la confirmation de livraison
       if (message.senderId !== user.id) {
         chatService.sendMessageDelivered(matchId, message.id)
@@ -95,19 +93,8 @@ export const Chat: React.FC = () => {
     // Fonction handler pour le rejet de média
     const handleMediaRejected = (data: { mediaId: string; matchId: string; rejectedBy: string }) => {
       console.log('❌ Media rejected event:', data)
-      setMessages(prev => prev.map(msg => {
-        if (msg.media?.id === data.mediaId) {
-          console.log('✅ Updating message with rejected media:', msg.id)
-          return {
-            ...msg,
-            media: {
-              ...msg.media,
-              receiverStatus: 'rejected' as const
-            }
-          }
-        }
-        return msg
-      }))
+      // TODO: Mettre à jour le cache React Query pour le média rejeté
+      // Pour l'instant on laisse, le refresh se fera automatiquement
     }
 
     // Fonction handler pour les messages livrés
@@ -121,13 +108,10 @@ export const Chat: React.FC = () => {
       console.log('✓✓ Messages read:', data)
       setReadMessages(prev => {
         const newSet = new Set(prev)
-        setMessages(currentMessages => {
-          currentMessages.forEach(msg => {
-            if (msg.senderId === user.id) {
-              newSet.add(msg.id)
-            }
-          })
-          return currentMessages
+        messages.forEach(msg => {
+          if (msg.senderId === user.id) {
+            newSet.add(msg.id)
+          }
         })
         return newSet
       })
@@ -209,87 +193,30 @@ export const Chat: React.FC = () => {
     }
   }
 
-  const loadMessages = async () => {
-    if (!matchId) return
+  // Initialiser les statuts delivered/read depuis les messages
+  useEffect(() => {
+    if (!messages || messages.length === 0) return
 
-    setIsLoading(true)
-    try {
-      // 1. Charger d'abord depuis le secure storage pour un affichage instantané
-      const cachedMessages = await userChatStorage.loadMessages(matchId)
+    const delivered = new Set<string>()
+    const read = new Set<string>()
 
-      if (cachedMessages.length > 0) {
-        setMessages(cachedMessages)
-        setIsLoadedFromCache(true)
-        setIsLoading(false)
+    messages.forEach(msg => {
+      if (msg.delivered) delivered.add(msg.id)
+      if (msg.read) read.add(msg.id)
+    })
 
-        // Initialiser les statuts depuis les messages en cache
-        const delivered = new Set<string>()
-        const read = new Set<string>()
+    setDeliveredMessages(delivered)
+    setReadMessages(read)
 
-        cachedMessages.forEach(msg => {
-          if (msg.delivered) {
-            delivered.add(msg.id)
-          }
-          if (msg.read) {
-            read.add(msg.id)
-          }
-        })
-
-        setDeliveredMessages(delivered)
-        setReadMessages(read)
-
-        setTimeout(() => scrollToBottom(), 100)
-      }
-
-      // 2. Ensuite, charger les derniers messages depuis le serveur en arrière-plan
-      const serverMessages = await chatService.getMatchMessages(matchId, 50)
-      setMessages(serverMessages)
-
-      // Sauvegarder dans le secure storage
-      await userChatStorage.saveMessages(matchId, serverMessages)
-
-      // Initialiser les statuts depuis les messages du serveur
-      const delivered = new Set<string>()
-      const read = new Set<string>()
-
-      serverMessages.forEach(msg => {
-        if (msg.delivered) {
-          delivered.add(msg.id)
-        }
-        if (msg.read) {
-          read.add(msg.id)
-        }
-      })
-
-      setDeliveredMessages(delivered)
-      setReadMessages(read)
-
-      await chatService.markAsRead(matchId)
-      // Réinitialiser le compteur de messages non lus pour ce match
+    // Marquer comme lu et notifier
+    if (matchId && messages.length > 0) {
+      chatService.markAsRead(matchId)
       resetUnread(matchId)
-      // Notifier via WebSocket que les messages ont été lus
-      if (serverMessages.length > 0) {
-        chatService.sendMessageRead(matchId, serverMessages[serverMessages.length - 1].id)
-      }
-
-      // Si on avait chargé depuis le cache, maintenant on a les données à jour
-      if (isLoadedFromCache) {
-        setTimeout(() => scrollToBottom(), 100)
-      }
-    } catch (err) {
-      showError(t('common.error'))
-      // Si le chargement serveur échoue mais qu'on a le cache, garder le cache
-      if (!isLoadedFromCache && matchId) {
-        const cachedMessages = await userChatStorage.loadMessages(matchId)
-        if (cachedMessages.length > 0) {
-          setMessages(cachedMessages)
-        }
-      }
-    } finally {
-      setIsLoading(false)
-      setIsLoadedFromCache(false)
+      chatService.sendMessageRead(matchId, messages[messages.length - 1].id)
     }
-  }
+
+    setTimeout(() => scrollToBottom(), 100)
+  }, [messages, matchId])
 
   const loadMoreMessages = async () => {
     if (!matchId || !user?.id || isLoadingMore || !hasMoreMessages) return
@@ -312,11 +239,15 @@ export const Chat: React.FC = () => {
           lastScrollHeight.current = container.scrollHeight
         }
 
-        // Ajouter les anciens messages au début
-        setMessages(prev => [...olderMessages, ...prev])
+        // Ajouter les anciens messages au début du cache React Query
+        const updatedMessages = [...olderMessages, ...messages]
+        queryClient.setQueryData<Message[]>(
+          chatKeys.messages(matchId),
+          updatedMessages
+        )
 
         // Mettre à jour le secure storage avec tous les messages
-        await userChatStorage.saveMessages(matchId, [...olderMessages, ...messages])
+        await userChatStorage.saveMessages(matchId, updatedMessages)
 
         // Restaurer la position du scroll après que les nouveaux messages soient rendus
         setTimeout(() => {
