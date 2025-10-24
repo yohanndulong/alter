@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { matchingService } from '@/services/matching'
-import { Match, User, SearchFilters } from '@/types'
+import { SearchFilters } from '@/types'
 import { useToast } from './useToast'
 
 /**
@@ -70,7 +70,7 @@ export function useLikeProfile() {
 
   return useMutation({
     mutationFn: (userId: string) => matchingService.likeProfile(userId),
-    onSuccess: (data, userId) => {
+    onSuccess: (data) => {
       // Invalider les queries concernées
       queryClient.invalidateQueries({ queryKey: matchingKeys.matches() })
       queryClient.invalidateQueries({ queryKey: matchingKeys.conversationsStatus() })

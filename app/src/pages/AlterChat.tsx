@@ -13,7 +13,6 @@ import './AlterChat.css'
 
 export const AlterChat: React.FC = () => {
   const { t } = useTranslation()
-  const { error: showError } = useToast()
   const { user } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const intentionMenuRef = useRef<HTMLDivElement>(null)

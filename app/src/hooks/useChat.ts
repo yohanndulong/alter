@@ -178,7 +178,7 @@ export function useAddAlterMessageToCache() {
 
   return async (message: ChatMessage) => {
     // Mettre à jour le cache React Query
-    const updatedMessages = queryClient.setQueryData<ChatMessage[]>(
+    queryClient.setQueryData<ChatMessage[]>(
       chatKeys.alterMessages(),
       (old = []) => [...old, message]
     )

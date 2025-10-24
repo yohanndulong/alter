@@ -60,7 +60,7 @@ export const Modal: React.FC<ModalProps> = ({
     const modalId = `modal-${Date.now()}`
     window.history.pushState({ modalId }, '')
 
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = () => {
       // Si on revient en arrière et que la modale est ouverte, la fermer
       if (isOpen) {
         onClose()
