@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ProfileModal, ProfileThumbnail, LoadingMoreIndicator } from '@/components'
 import { User } from '@/types'
-import { useInterestedProfiles, useLikeProfile } from '@/hooks'
+import { useInterestedProfiles, useLikeProfile, useBackButtonNavigation } from '@/hooks'
 import { getImageUrl } from '@/utils/image'
 import './Likes.css'
 
@@ -18,6 +18,9 @@ export const Likes: React.FC = () => {
 
   // Mutation pour liker (invalide le cache automatiquement)
   const likeMutation = useLikeProfile()
+
+  // Gérer le bouton retour - retourner à discover
+  useBackButtonNavigation('/discover')
 
   const handleProfileClick = (profile: User) => {
     setSelectedProfile(profile)
