@@ -79,7 +79,7 @@ export class ModerationService implements OnModuleInit {
 
       // Améliorer la qualité de rendu
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      (ctx as any).imageSmoothingQuality = 'high';
 
       ctx.drawImage(image, 0, 0, width, height);
 
