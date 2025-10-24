@@ -1,37 +1,23 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ProfileModal, ProfileThumbnail, LoadingMoreIndicator } from '@/components'
-import { matchingService } from '@/services/matching'
 import { User } from '@/types'
-import { useToast } from '@/hooks'
+import { useInterestedProfiles, useLikeProfile } from '@/hooks'
 import { getImageUrl } from '@/utils/image'
 import './Likes.css'
 
 export const Likes: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { success, error: showError } = useToast()
 
-  const [profiles, setProfiles] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedProfile, setSelectedProfile] = useState<User | null>(null)
 
-  useEffect(() => {
-    loadProfiles()
-  }, [])
+  // React Query - Charger les profils intéressés avec cache auto
+  const { data: profiles = [], isLoading } = useInterestedProfiles()
 
-  const loadProfiles = async () => {
-    setIsLoading(true)
-    try {
-      const data = await matchingService.getInterestedProfiles()
-      setProfiles(data)
-    } catch (err) {
-      showError(t('common.error'))
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Mutation pour liker (invalide le cache automatiquement)
+  const likeMutation = useLikeProfile()
 
   const handleProfileClick = (profile: User) => {
     setSelectedProfile(profile)
@@ -44,20 +30,12 @@ export const Likes: React.FC = () => {
   const handleLike = async () => {
     if (!selectedProfile) return
 
-    try {
-      const result = await matchingService.likeProfile(selectedProfile.id)
-      if (result.match) {
-        success(t('matches.newMatch'))
-      } else {
-        success(t('discover.like'))
+    likeMutation.mutate(selectedProfile.id, {
+      onSuccess: () => {
+        setSelectedProfile(null)
       }
-      setProfiles(prev => prev.filter(p => p.id !== selectedProfile.id))
-      setSelectedProfile(null)
-    } catch (err) {
-      showError(t('common.error'))
-    }
+    })
   }
-
 
   const handleBack = () => {
     navigate('/discover')
@@ -73,7 +51,7 @@ export const Likes: React.FC = () => {
     )
   }
 
-  if (profiles.length === 0 && !isLoading) {
+  if (profiles.length === 0) {
     return (
       <div className="likes-container">
         <div className="likes-header">
