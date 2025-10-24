@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ProfileModal, Logo, CachedImage, Badge } from '@/components'
-import { matchingService } from '@/services/matching'
+import { ProfileModal, Logo, CachedImage, Badge, LoadingMoreIndicator } from '@/components'
 import { Match } from '@/types'
-import { useToast } from '@/hooks'
+import { useMatches, useConversationsStatus } from '@/hooks'
 import { formatRelativeTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
 import './Matches.css'
@@ -12,49 +11,21 @@ import './Matches.css'
 export const Matches: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { error: showError } = useToast()
 
-  const [matches, setMatches] = useState<Match[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
-  const [conversationsStatus, setConversationsStatus] = useState<{
-    activeConversations: number
-    maxConversations: number
-    remainingSlots: number
-    canLike: boolean
-  } | null>(null)
 
-  useEffect(() => {
-    loadMatches()
-    loadConversationsStatus()
-  }, [])
+  // Utilisation de React Query - cache automatique de 5 minutes !
+  const { data: matches = [], isLoading } = useMatches()
+  const { data: conversationsStatus } = useConversationsStatus()
 
-  const loadConversationsStatus = async () => {
-    try {
-      const status = await matchingService.getConversationsStatus()
-      setConversationsStatus(status)
-    } catch (err) {
-      console.error('Error loading conversations status:', err)
-    }
-  }
-
-  const loadMatches = async () => {
-    setIsLoading(true)
-    try {
-      const data = await matchingService.getMatches()
-      // Trier par date du dernier message (plus récent en premier)
-      const sortedData = data.sort((a, b) => {
-        if (!a.lastMessageAt) return 1
-        if (!b.lastMessageAt) return -1
-        return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
-      })
-      setMatches(sortedData)
-    } catch (err) {
-      showError(t('common.error'))
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  // Tri des matches par date
+  const sortedMatches = useMemo(() => {
+    return [...matches].sort((a, b) => {
+      if (!a.lastMessageAt) return 1
+      if (!b.lastMessageAt) return -1
+      return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+    })
+  }, [matches])
 
   const handleMatchClick = (matchId: string) => {
     navigate(`/chat/${matchId}`)
@@ -77,12 +48,14 @@ export const Matches: React.FC = () => {
   if (isLoading) {
     return (
       <div className="matches-container">
-        <div className="matches-loading">{t('common.loading')}</div>
+        <div className="matches-loading-container">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }
 
-  if (matches.length === 0 && !isLoading) {
+  if (sortedMatches.length === 0) {
     return (
       <div className="matches-container">
         <div className="matches-header">
@@ -117,7 +90,7 @@ export const Matches: React.FC = () => {
       </div>
 
       <div className="matches-list">
-        {matches.map((match) => (
+        {sortedMatches.map((match) => (
           <div
             key={match.id}
             className="matches-conversation"

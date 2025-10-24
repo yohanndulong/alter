@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Card, Modal, Input } from '@/components'
 import { useAuth } from '@/contexts/AuthContext'
-import { useToast } from '@/hooks'
+import { useToast, useBackButtonNavigation } from '@/hooks'
 import { api } from '@/services/api'
 import { photosService, Photo } from '@/services/photos'
 import parametersService from '@/services/parameters'
@@ -29,6 +29,9 @@ export const EditProfile: React.FC = () => {
   const navigate = useNavigate()
   const { user, updateUser } = useAuth()
   const { success, error: showError } = useToast()
+
+  // Gérer le bouton retour - retourner au profil
+  useBackButtonNavigation('/profile')
 
   const [photos, setPhotos] = useState<Photo[]>([])
   const [city, setCity] = useState('')

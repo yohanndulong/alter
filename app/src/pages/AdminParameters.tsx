@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Button, Card } from '@/components'
+import { Button, Card, LoadingMoreIndicator } from '@/components'
 import { api } from '@/services/api'
 import { useToast } from '@/hooks'
 import './AdminParameters.css'
@@ -138,7 +138,9 @@ export const AdminParameters: React.FC = () => {
   if (isLoading) {
     return (
       <div className="admin-parameters-container">
-        <div className="admin-parameters-loading">Chargement...</div>
+        <div className="admin-parameters-loading">
+          <LoadingMoreIndicator text="Chargement..." />
+        </div>
       </div>
     )
   }

@@ -5,7 +5,7 @@ import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage,
 import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message, Match, PhotoViewMode } from '@/types'
-import { useToast, usePrivacyScreen } from '@/hooks'
+import { useToast, usePrivacyScreen, useBackButtonNavigation } from '@/hooks'
 import { formatTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
 import { useAuth } from '@/contexts/AuthContext'
@@ -53,6 +53,9 @@ export const Chat: React.FC = () => {
 
   // Activer la protection contre les captures d'écran
   usePrivacyScreen(true)
+
+  // Gérer le bouton retour - retourner à la liste des matches
+  useBackButtonNavigation('/matches')
 
   useEffect(() => {
     if (!matchId || !user?.id) return
@@ -546,7 +549,9 @@ export const Chat: React.FC = () => {
   if (isLoading) {
     return (
       <div className="chat-container">
-        <div className="chat-loading">{t('common.loading')}</div>
+        <div className="chat-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Logo, LoadingMoreIndicator } from '@/components'
 import { chatService } from '@/services/chat'
 import { ChatMessage } from '@/types'
-import { useToast } from '@/hooks'
+import { useToast, useBackButtonNavigation } from '@/hooks'
 import { useAuth } from '@/contexts/AuthContext'
 import { parseMarkdown } from '@/utils/markdown'
 import { formatMessageTime } from '@/utils/date'
@@ -33,6 +33,9 @@ export const AlterChat: React.FC = () => {
   const [isLoadedFromCache, setIsLoadedFromCache] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastScrollHeight = useRef<number>(0)
+
+  // Gérer le bouton retour - retourner à discover
+  useBackButtonNavigation('/discover')
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -349,7 +352,9 @@ export const AlterChat: React.FC = () => {
   if (isLoading) {
     return (
       <div className="alter-chat-container">
-        <div className="alter-chat-loading">{t('common.loading')}</div>
+        <div className="alter-chat-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }

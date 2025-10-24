@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button, Input, Logo } from '@/components'
+import { Button, Input, Logo, LoadingMoreIndicator } from '@/components'
 import { onboardingService } from '@/services/onboarding'
 import parametersService from '@/services/parameters'
 import { OnboardingQuestion, OnboardingAnswer } from '@/types'
@@ -186,7 +186,9 @@ export const Onboarding: React.FC = () => {
   if (isLoading) {
     return (
       <div className="onboarding-container">
-        <div className="onboarding-loading">{t('common.loading')}</div>
+        <div className="onboarding-loading">
+          <LoadingMoreIndicator text={t('common.loading')} />
+        </div>
       </div>
     )
   }
