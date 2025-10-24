@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ProfileCard, Modal, Button, CompatibilityListItem, CompatibilityFilter, ProfileModal, ConfirmDialog, Logo } from '@/components'
-import { matchingService } from '@/services/matching'
 import { User, Match, DiscoverViewMode, RelationshipFilter } from '@/types'
-import { useToast } from '@/hooks'
+import { useToast, useDiscoverProfiles, useConversationsStatus, useInterestedProfiles } from '@/hooks'
 import { api } from '@/services/api'
+import { matchingService } from '@/services/matching'
 import { useAuth } from '@/contexts/AuthContext'
+import { useQueryClient } from '@tanstack/react-query'
+import { matchingKeys } from '@/hooks/useMatching'
 import parametersService from '@/services/parameters'
 import './Discover.css'
 
@@ -16,13 +18,12 @@ export const Discover: React.FC = () => {
   const { success, error: showError } = useToast()
   const { user, updateUser } = useAuth()
 
-  const [profiles, setProfiles] = useState<User[]>([])
+  const queryClient = useQueryClient()
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [passedProfiles, setPassedProfiles] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [viewMode, setViewMode] = useState<DiscoverViewMode>('list')
   const [relationshipFilter, setRelationshipFilter] = useState<RelationshipFilter>('all')
-  const [hasProfileEmbedding, setHasProfileEmbedding] = useState(true)
   const [matchModal, setMatchModal] = useState<{ isOpen: boolean; match?: Match }>({
     isOpen: false,
   })
@@ -40,26 +41,28 @@ export const Discover: React.FC = () => {
   })
   const [maxDistance, setMaxDistance] = useState(200)
   const [defaultMinCompatibility, setDefaultMinCompatibility] = useState(50)
-  const [conversationsStatus, setConversationsStatus] = useState<{
-    activeConversations: number
-    maxConversations: number
-    remainingSlots: number
-    canLike: boolean
-  } | null>(null)
   const [filters, setFilters] = useState({
     distance: user?.preferenceDistance || 50,
     ageMin: user?.preferenceAgeMin || 18,
     ageMax: user?.preferenceAgeMax || 50,
     minCompatibility: user?.preferenceMinCompatibility || 50
   })
-  const [interestedCount, setInterestedCount] = useState(0)
   const [likingUserId, setLikingUserId] = useState<string | null>(null)
 
+  // React Query - Charger les profils avec cache automatique
+  const { data: discoverData, isLoading } = useDiscoverProfiles()
+  const profiles = discoverData?.profiles || []
+  const hasProfileEmbedding = discoverData?.hasProfileEmbedding ?? true
+
+  // React Query - Statut des conversations
+  const { data: conversationsStatus } = useConversationsStatus()
+
+  // React Query - Profils intéressés (pour le compteur)
+  const { data: interestedProfiles = [] } = useInterestedProfiles()
+  const interestedCount = interestedProfiles.length
+
   useEffect(() => {
-    loadProfiles()
     loadMaxDistance()
-    loadConversationsStatus()
-    loadInterestedCount()
   }, [])
 
   useEffect(() => {
@@ -86,40 +89,9 @@ export const Discover: React.FC = () => {
     }
   }
 
-  const loadConversationsStatus = async () => {
-    try {
-      const status = await matchingService.getConversationsStatus()
-      setConversationsStatus(status)
-    } catch (err) {
-      console.error('Error loading conversations status:', err)
-    }
-  }
-
-  const loadInterestedCount = async () => {
-    try {
-      const interestedProfiles = await matchingService.getInterestedProfiles()
-      setInterestedCount(interestedProfiles.length)
-    } catch (err) {
-      console.error('Error loading interested profiles count:', err)
-    }
-  }
-
-  const loadProfiles = async () => {
-    setIsLoading(true)
-    try {
-      const data = await matchingService.getDiscoverProfiles()
-      setProfiles(data.profiles)
-      setHasProfileEmbedding(data.hasProfileEmbedding)
-
-      // Log les stats de cache (si disponibles)
-      if (data.cacheStats) {
-        console.log(`📊 Cache performance: ${data.cacheStats.hits}/${data.cacheStats.total} hits (${Math.round(data.cacheStats.hits / data.cacheStats.total * 100)}%)`)
-      }
-    } catch (err) {
-      showError(t('common.error'))
-    } finally {
-      setIsLoading(false)
-    }
+  // Fonction helper pour recharger les profils
+  const reloadProfiles = () => {
+    queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
   }
 
   const getFilteredProfiles = () => {
@@ -178,19 +150,15 @@ export const Discover: React.FC = () => {
       const result = await matchingService.likeProfile(targetId)
       if (result.match && result.matchData) {
         setMatchModal({ isOpen: true, match: result.matchData })
-        // Recharger le compteur de likes reçus car il y a eu un match
-        await loadInterestedCount()
+        // Invalider le cache pour recharger les profils intéressés
+        queryClient.invalidateQueries({ queryKey: matchingKeys.interested() })
       } else {
         success(t('discover.like'))
       }
 
-      // Mark profile as liked in local state
-      setProfiles(prev => prev.map(p =>
-        p.id === targetId ? { ...p, isLiked: true } : p
-      ))
-
-      // Recharger le statut après un like réussi
-      await loadConversationsStatus()
+      // Invalider les caches
+      queryClient.invalidateQueries({ queryKey: matchingKeys.conversationsStatus() })
+      queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
 
       if (!userId) nextProfile()
     } catch (err: any) {
@@ -200,8 +168,8 @@ export const Discover: React.FC = () => {
           isOpen: true,
           maxConversations: err.response.data.maxConversations,
         })
-        // Recharger le statut pour le mettre à jour
-        await loadConversationsStatus()
+        // Invalider le cache du statut
+        queryClient.invalidateQueries({ queryKey: matchingKeys.conversationsStatus() })
       } else {
         showError(t('common.error'))
       }
@@ -230,7 +198,7 @@ export const Discover: React.FC = () => {
     if (currentIndex < profiles.length - 1) {
       setCurrentIndex(prev => prev + 1)
     } else {
-      loadProfiles()
+      reloadProfiles()
       setCurrentIndex(0)
     }
   }
@@ -293,7 +261,7 @@ export const Discover: React.FC = () => {
       })
 
       // Reload profiles with new filters
-      await loadProfiles()
+      reloadProfiles()
 
       setFilterModalOpen(false)
       success('Filtres appliqués')
@@ -405,7 +373,7 @@ export const Discover: React.FC = () => {
           <div className="discover-empty">
             <h2 className="discover-empty-title">{t('discover.noMoreProfiles')}</h2>
             <p className="discover-empty-text">{t('discover.comeBackLater')}</p>
-            <Button variant="primary" onClick={loadProfiles}>
+            <Button variant="primary" onClick={reloadProfiles}>
               {t('common.continue')}
             </Button>
           </div>

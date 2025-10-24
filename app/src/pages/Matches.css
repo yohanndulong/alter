@@ -15,6 +15,14 @@
   height: 100vh;
 }
 
+.matches-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: var(--spacing-8);
+}
+
 .matches-header {
   display: flex;
   align-items: center;
