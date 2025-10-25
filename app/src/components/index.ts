@@ -55,3 +55,9 @@ export { Badge } from './Badge'
 export type { BadgeProps } from './Badge'
 
 export { NetworkStatus } from './NetworkStatus'
+
+export { CityAutocomplete } from './CityAutocomplete'
+export type { CityAutocompleteProps } from './CityAutocomplete'
+
+export { CityLocationInput } from './CityLocationInput'
+export type { CityLocationInputProps, CityLocation } from './CityLocationInput'
