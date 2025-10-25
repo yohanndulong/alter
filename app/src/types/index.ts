@@ -111,7 +111,7 @@ export interface Message {
 export interface OnboardingQuestion {
   id: string
   key: string
-  type: 'text' | 'single_choice' | 'multiple_choice' | 'date' | 'number' | 'slider' | 'range' | 'photo'
+  type: 'text' | 'single_choice' | 'multiple_choice' | 'date' | 'number' | 'slider' | 'range' | 'photo' | 'city_location'
   question: string
   placeholder?: string
   options?: string[]

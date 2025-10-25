@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Modal, Input } from '@/components'
+import { Card, Modal, Input, CityAutocomplete } from '@/components'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast, useBackButtonNavigation } from '@/hooks'
 import { api } from '@/services/api'
@@ -122,9 +122,13 @@ export const EditProfile: React.FC = () => {
     }, 800) // 800ms debounce
   }, [updateUser])
 
-  const handleCityChange = (value: string) => {
-    setCity(value)
-    autoSave({ city: value })
+  const handleCityChange = (cityName: string, latitude?: number, longitude?: number) => {
+    setCity(cityName)
+    autoSave({
+      city: cityName,
+      locationLatitude: latitude,
+      locationLongitude: longitude
+    })
   }
 
   const handleSexualOrientationChange = (value: string) => {
@@ -347,15 +351,11 @@ export const EditProfile: React.FC = () => {
 
           <Card>
             <div className="edit-profile-preference-item">
-              <label className="edit-profile-preference-label">
-                {t('editProfile.city')}
-              </label>
-              <Input
-                type="text"
+              <CityAutocomplete
+                label={t('editProfile.city')}
                 placeholder={t('editProfile.cityPlaceholder')}
                 value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
-                fullWidth
+                onChange={handleCityChange}
               />
             </div>
 
