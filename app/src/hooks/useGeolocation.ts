@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Geolocation } from '@capacitor/geolocation';
 
 export interface GeolocationResult {
   city: string;
@@ -14,7 +15,7 @@ export interface UseGeolocationReturn {
 
 /**
  * Hook pour obtenir la géolocalisation de l'utilisateur
- * Utilise l'API HTML5 Geolocation + Nominatim (OpenStreetMap) pour le reverse geocoding
+ * Utilise Capacitor Geolocation (natif iOS/Android + web) + Nominatim pour le reverse geocoding
  */
 export const useGeolocation = (): UseGeolocationReturn => {
   const [loading, setLoading] = useState(false);
@@ -25,36 +26,26 @@ export const useGeolocation = (): UseGeolocationReturn => {
     setError(null);
 
     try {
-      // Vérifier si la géolocalisation est disponible
-      if (!navigator.geolocation) {
-        throw new Error('La géolocalisation n\'est pas supportée par votre navigateur');
+      // Vérifier les permissions
+      const permission = await Geolocation.checkPermissions();
+
+      if (permission.location === 'denied') {
+        throw new Error('Permission de géolocalisation refusée');
       }
 
-      // Obtenir la position GPS de l'utilisateur
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          (err) => {
-            switch (err.code) {
-              case err.PERMISSION_DENIED:
-                reject(new Error('Permission de géolocalisation refusée'));
-                break;
-              case err.POSITION_UNAVAILABLE:
-                reject(new Error('Position indisponible'));
-                break;
-              case err.TIMEOUT:
-                reject(new Error('Délai de géolocalisation dépassé'));
-                break;
-              default:
-                reject(new Error('Erreur de géolocalisation'));
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
-          }
-        );
+      // Demander la permission si elle n'est pas encore accordée
+      if (permission.location === 'prompt' || permission.location === 'prompt-with-rationale') {
+        const requestResult = await Geolocation.requestPermissions();
+        if (requestResult.location !== 'granted') {
+          throw new Error('Permission de géolocalisation refusée');
+        }
+      }
+
+      // Obtenir la position GPS de l'utilisateur avec Capacitor
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
       });
 
       const { latitude, longitude } = position.coords;
