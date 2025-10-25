@@ -385,7 +385,7 @@ export const Discover: React.FC = () => {
               bio={currentProfile.bio}
               interests={currentProfile.interests}
               images={currentProfile.images}
-              distance={currentProfile.location ? 5 : undefined}
+              distance={currentProfile.distance}
               compatibilityScoreGlobal={currentProfile.compatibilityScoreGlobal}
               compatibilityScoreLove={currentProfile.compatibilityScoreLove}
               compatibilityScoreFriendship={currentProfile.compatibilityScoreFriendship}

@@ -20,6 +20,7 @@ export interface User {
     longitude: number
   }
   city?: string
+  distance?: number // Distance en km par rapport à l'utilisateur actuel
   sexualOrientation?: string
   onboardingComplete: boolean
   isAdmin?: boolean

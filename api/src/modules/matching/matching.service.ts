@@ -11,6 +11,7 @@ import { PhotosService } from '../users/photos.service';
 import { ParametersService } from '../parameters/parameters.service';
 import { CompatibilityService } from './compatibility.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { calculateDistance, isWithinDistance } from '../../utils/distance.util';
 
 @Injectable()
 export class MatchingService {
@@ -231,8 +232,11 @@ export class MatchingService {
 
     this.logger.log(`========== END DISCOVER FILTERING ==========\n`);
 
+    // Filter by distance and add distance to profiles
+    const profilesFiltered = this.filterByDistance(currentUser, profilesWithScores);
+
     // Enrich with photos as signed URLs and isLiked flag
-    return this.enrichUsersWithPhotos(profilesWithScores, likedIds);
+    return this.enrichUsersWithPhotos(profilesFiltered, likedIds);
   }
 
   /**
@@ -354,8 +358,11 @@ export class MatchingService {
     // Ne PAS calculer les scores de compatibilité (utilisateur doit d'abord discuter avec ALTER)
     // Les scores seront undefined, le frontend affichera un message approprié
 
+    // Filter by distance and add distance to profiles
+    const profilesFiltered = this.filterByDistance(currentUser, profiles);
+
     // Enrich with photos as signed URLs and isLiked flag
-    return this.enrichUsersWithPhotos(profiles, likedIds);
+    return this.enrichUsersWithPhotos(profilesFiltered, likedIds);
   }
 
   /**
@@ -575,6 +582,67 @@ export class MatchingService {
   }
 
   /**
+   * Filtre les profils par distance et ajoute la distance calculée
+   * @param currentUser - L'utilisateur actuel
+   * @param profiles - Les profils à filtrer
+   * @returns Profils filtrés avec distance ajoutée
+   */
+  private filterByDistance(currentUser: User, profiles: User[]): User[] {
+    // Si l'utilisateur n'a pas de coordonnées GPS, retourner tous les profils sans filtrage
+    if (!currentUser.locationLatitude || !currentUser.locationLongitude) {
+      this.logger.log(`User ${currentUser.id} has no GPS coordinates, skipping distance filter`);
+      return profiles.map(profile => ({
+        ...profile,
+        distance: undefined,
+      } as User));
+    }
+
+    const maxDistance = currentUser.preferenceDistance || 200; // Distance par défaut 200 km
+    this.logger.log(`\n--- Filtering ${profiles.length} profiles by distance (max: ${maxDistance} km) ---`);
+
+    const profilesWithDistance = profiles.map(profile => {
+      // Calculer la distance si le profil a des coordonnées GPS
+      let distance: number | undefined;
+      if (profile.locationLatitude && profile.locationLongitude) {
+        distance = calculateDistance(
+          currentUser.locationLatitude,
+          currentUser.locationLongitude,
+          profile.locationLatitude,
+          profile.locationLongitude,
+        );
+        this.logger.log(
+          `Profile ${profile.id} (${profile.name}, ${profile.city || 'no city'}) is ${distance} km away`
+        );
+      } else {
+        this.logger.log(
+          `Profile ${profile.id} (${profile.name}) has no GPS coordinates, distance unknown`
+        );
+      }
+
+      return {
+        ...profile,
+        distance,
+      } as User;
+    });
+
+    // Filtrer les profils par distance
+    // On garde les profils qui :
+    // 1. N'ont pas de coordonnées GPS (distance = undefined)
+    // 2. Sont à une distance <= maxDistance
+    const filteredProfiles = profilesWithDistance.filter(profile => {
+      if (profile.distance === undefined || profile.distance === Infinity) {
+        // Garder les profils sans GPS
+        return true;
+      }
+      return profile.distance <= maxDistance;
+    });
+
+    this.logger.log(`--- Distance filter: ${filteredProfiles.length}/${profiles.length} profiles within ${maxDistance} km ---`);
+
+    return filteredProfiles;
+  }
+
+  /**
    * Enrich users with photos as signed URLs and isLiked flag
    */
   private async enrichUsersWithPhotos(users: User[], likedIds: string[] = []): Promise<any[]> {
@@ -598,6 +666,7 @@ export class MatchingService {
           images: photosWithUrls.map(p => p.url), // For backward compatibility
           photos: photosWithUrls,
           isLiked: likedIds.includes(user.id), // Add isLiked flag
+          distance: (user as any).distance, // Add distance if available
         };
       })
     );
