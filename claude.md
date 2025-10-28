@@ -469,6 +469,83 @@ npm run migration:run     # Réappliquer
 - Vérifier les logs du navigateur pour les erreurs MSW
 - Nettoyer le cache du navigateur
 
+## Changelog récent
+
+### Janvier 2025
+
+#### Corrections de bugs critiques
+
+**1. Fix des erreurs TypeScript dans le matching service**
+- Ajout du type `UserWithDistance` pour les profils avec distance calculée
+- Correction des erreurs TS2339 dans `api/src/modules/matching/matching.service.ts`
+- Le champ `distance` est maintenant correctement typé sur les objets User
+
+**2. Résolution de la boucle infinie d'appels API Nominatim**
+- **Problème** : L'autocomplete de ville appelait l'API en boucle lors de l'édition du profil
+- **Cause** :
+  - Le tableau `countryCodes` par défaut créait une nouvelle instance à chaque render
+  - Le `useEffect` se redéclenchait constamment à cause des dépendances
+  - `updateUser()` dans `autoSave` modifiait le contexte, redéclenchant le cycle
+- **Solution** :
+  - Création de `DEFAULT_COUNTRY_CODES` comme constante externe
+  - Suppression de `updateUser()` dans la fonction `autoSave`
+  - Utilisation de `isInitializedRef` pour ne charger les données qu'une fois
+  - Séparation des `useEffect` pour éviter les re-renders en cascade
+
+**3. Fix du statut réseau bloqué en "offline"**
+- **Problème** : L'indicateur "Pas de connexion internet" restait affiché même en ligne
+- **Solution** :
+  - Effacement automatique des erreurs offline quand le navigateur détecte le retour en ligne
+  - Ajout de logs de debug pour tracer les changements d'état
+  - Vérification de l'état initial au montage du composant
+  - Amélioration de la synchronisation entre `status` et `lastError`
+
+**4. Correction de la modale de filtres qui se fermait immédiatement**
+- **Problème** : La modale de filtres sur la page Discover se fermait dès qu'on cliquait sur les sliders
+- **Causes** :
+  - Boucle de re-render causée par `onClose` comme fonction inline changeant à chaque render
+  - Événements de clic/touch se propageant jusqu'au backdrop
+  - Gestion de l'historique du navigateur déclenchant des fermetures intempestives
+- **Solutions** :
+  - Utilisation de `onCloseRef` pour éviter les re-renders inutiles
+  - Ajout de `closeOnBackdropClick={false}` et `enableSwipeToClose={false}`
+  - `stopPropagation()` sur tous les inputs range et conteneurs
+  - Amélioration de la gestion de l'historique avec vérification du `modalId`
+
+#### Nouvelles fonctionnalités
+
+**1. Type d'onboarding `city_location`**
+- Ajout du type `city_location` à l'enum PostgreSQL et TypeORM
+- Support de l'autocomplete de ville dans l'onboarding
+- Migration SQL : `api/src/migrations/005-add-city-location-onboarding-question.sql`
+- Le composant `CityLocationInput` permet :
+  - Géolocalisation GPS automatique
+  - Recherche manuelle avec autocomplete Nominatim
+
+**2. Composant CityAutocomplete amélioré**
+- Autocomplete pour la sélection de ville avec l'API Nominatim
+- Debounce de 400ms pour optimiser les appels API
+- Support multi-pays (FR, BE, CH, CA par défaut)
+- Gestion du clavier (flèches, Enter, Escape)
+- Filtrage intelligent (villes, villages, communes)
+- Utilisé dans EditProfile et Onboarding
+
+#### Fichiers modifiés
+
+**API (`/api`)**
+- `src/modules/matching/matching.service.ts` - Ajout du type UserWithDistance
+- `src/modules/onboarding/entities/onboarding-question.entity.ts` - Type CITY_LOCATION
+- `src/migrations/005-add-city-location-onboarding-question.sql` - Migration city_location
+
+**Frontend (`/app`)**
+- `src/pages/EditProfile.tsx` - Fix boucle infinie + useEffect optimisés
+- `src/pages/Discover.tsx` - Fix modale de filtres + stopPropagation
+- `src/components/Modal.tsx` - Gestion historique améliorée + onCloseRef
+- `src/components/NetworkStatus.tsx` - Fix détection réseau
+- `src/components/CityAutocomplete.tsx` - Constante DEFAULT_COUNTRY_CODES
+- `src/contexts/NetworkContext.tsx` - Effacement auto erreurs offline
+- `src/types/index.ts` - Type city_location déjà présent
+
 ## Support et contact
 
 Pour toute question ou problème :
@@ -478,5 +555,5 @@ Pour toute question ou problème :
 
 ---
 
-**Dernière mise à jour** : Octobre 2024
-**Version** : 1.0.0
+**Dernière mise à jour** : Janvier 2025
+**Version** : 1.0.1
