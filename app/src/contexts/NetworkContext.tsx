@@ -44,12 +44,20 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
   // Détection de la connexion online/offline
   useEffect(() => {
     const handleOnline = () => {
+      console.log('🟢 Network: Browser detected online')
       setIsOnline(true)
       setStatus('online')
-      setLastError(null)
+      // Effacer toutes les erreurs offline quand on repasse en ligne
+      setLastError(prev => {
+        if (prev?.type === 'offline') {
+          return null
+        }
+        return prev
+      })
     }
 
     const handleOffline = () => {
+      console.log('🔴 Network: Browser detected offline')
       setIsOnline(false)
       setStatus('offline')
       setLastError({
@@ -57,6 +65,11 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
         timestamp: Date.now(),
         type: 'offline'
       })
+    }
+
+    // Vérifier l'état initial
+    if (!navigator.onLine) {
+      handleOffline()
     }
 
     window.addEventListener('online', handleOnline)

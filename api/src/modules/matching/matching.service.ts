@@ -13,6 +13,9 @@ import { CompatibilityService } from './compatibility.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { calculateDistance, isWithinDistance } from '../../utils/distance.util';
 
+// Type for User with calculated distance
+type UserWithDistance = User & { distance?: number };
+
 @Injectable()
 export class MatchingService {
   private readonly logger = new Logger(MatchingService.name);
@@ -587,14 +590,14 @@ export class MatchingService {
    * @param profiles - Les profils à filtrer
    * @returns Profils filtrés avec distance ajoutée
    */
-  private filterByDistance(currentUser: User, profiles: User[]): User[] {
+  private filterByDistance(currentUser: User, profiles: User[]): UserWithDistance[] {
     // Si l'utilisateur n'a pas de coordonnées GPS, retourner tous les profils sans filtrage
     if (!currentUser.locationLatitude || !currentUser.locationLongitude) {
       this.logger.log(`User ${currentUser.id} has no GPS coordinates, skipping distance filter`);
       return profiles.map(profile => ({
         ...profile,
         distance: undefined,
-      } as User));
+      } as UserWithDistance));
     }
 
     const maxDistance = currentUser.preferenceDistance || 200; // Distance par défaut 200 km
@@ -622,7 +625,7 @@ export class MatchingService {
       return {
         ...profile,
         distance,
-      } as User;
+      } as UserWithDistance;
     });
 
     // Filtrer les profils par distance

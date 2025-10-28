@@ -11,6 +11,13 @@ export const NetworkStatus: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
+    // Si on est de retour en ligne, masquer l'alerte offline
+    if (status === 'online' && lastError?.type === 'offline') {
+      setIsVisible(false)
+      clearNetworkError()
+      return
+    }
+
     if (lastError) {
       setIsVisible(true)
 

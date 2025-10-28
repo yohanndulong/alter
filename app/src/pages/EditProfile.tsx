@@ -55,11 +55,17 @@ export const EditProfile: React.FC = () => {
 
   // Debounce timer for auto-save
   const saveTimerRef = useRef<NodeJS.Timeout>()
+  const isInitializedRef = useRef(false)
 
+  // Load photos and parameters once on mount
   useEffect(() => {
     loadPhotos()
     loadMinPhotos()
-    if (user) {
+  }, [])
+
+  // Load user data once when user is available
+  useEffect(() => {
+    if (user && !isInitializedRef.current) {
       setCity(user.city || '')
       setSexualOrientation(user.sexualOrientation || '')
       setPreferences({
@@ -69,6 +75,7 @@ export const EditProfile: React.FC = () => {
         distance: user.preferenceDistance || 50,
         minCompatibility: user.preferenceMinCompatibility ?? defaultMinCompatibility
       })
+      isInitializedRef.current = true
     }
   }, [user, defaultMinCompatibility])
 
@@ -110,8 +117,8 @@ export const EditProfile: React.FC = () => {
         setSaveIndicator('saving')
         await api.put('/users/me', data)
 
-        // Update local user context
-        updateUser(data)
+        // Don't update local user context to avoid triggering infinite loops
+        // The data is already saved to the API and will be reflected when needed
 
         setSaveIndicator('saved')
         setTimeout(() => setSaveIndicator('idle'), 2000)
@@ -120,7 +127,7 @@ export const EditProfile: React.FC = () => {
         setSaveIndicator('idle')
       }
     }, 800) // 800ms debounce
-  }, [updateUser])
+  }, [])
 
   const handleCityChange = (cityName: string, latitude?: number, longitude?: number) => {
     setCity(cityName)

@@ -26,6 +26,9 @@ export interface CityAutocompleteProps {
   disabled?: boolean
 }
 
+// Constante pour éviter de créer un nouveau tableau à chaque render
+const DEFAULT_COUNTRY_CODES = ['fr', 'be', 'ch', 'ca']
+
 /**
  * Composant d'autocomplete pour rechercher une ville
  * Utilise l'API Nominatim (OpenStreetMap) pour la recherche géographique
@@ -37,7 +40,7 @@ export const CityAutocomplete: React.FC<CityAutocompleteProps> = ({
   placeholder = 'Rechercher votre ville...',
   label,
   required = false,
-  countryCodes = ['fr', 'be', 'ch', 'ca'], // Pays francophones par défaut
+  countryCodes = DEFAULT_COUNTRY_CODES, // Pays francophones par défaut
   disabled = false,
 }) => {
   const [query, setQuery] = useState(value)
