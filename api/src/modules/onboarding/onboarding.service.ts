@@ -126,6 +126,18 @@ export class OnboardingService {
       userUpdates.city = answersObj.city;
     }
 
+    // Handle city_location with GPS coordinates
+    if (answersObj.city_location) {
+      const locationData = answersObj.city_location;
+      if (typeof locationData === 'object') {
+        userUpdates.city = locationData.city;
+        if (locationData.latitude !== undefined && locationData.longitude !== undefined) {
+          userUpdates.locationLatitude = parseFloat(locationData.latitude);
+          userUpdates.locationLongitude = parseFloat(locationData.longitude);
+        }
+      }
+    }
+
     if (answersObj.biologicalSex) {
       userUpdates.gender = this.mapBiologicalSexToGender(answersObj.biologicalSex);
     }

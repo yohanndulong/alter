@@ -119,9 +119,14 @@ export const CompatibilityListItem: React.FC<CompatibilityListItemProps> = ({
       <div className="compatibility-list-item-content">
         <div className="compatibility-list-item-header">
           <div className="compatibility-header-left">
-            <h3 className="compatibility-list-item-name">
-              {user.name}, {user.age}
-            </h3>
+            <div className="compatibility-list-item-name-row">
+              <h3 className="compatibility-list-item-name">
+                {user.name}, {user.age}
+              </h3>
+              {user.distance !== undefined && (
+                <span className="compatibility-list-item-distance">📍 {user.distance} km</span>
+              )}
+            </div>
             {trendText && (
               <div className="compatibility-evolution-badge">
                 <span className="evolution-icon">{trendIcon}</span>

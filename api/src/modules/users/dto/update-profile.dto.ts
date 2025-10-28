@@ -21,6 +21,18 @@ export class UpdateProfileDto {
   bio?: string;
 
   @IsOptional()
+  @IsString()
+  city?: string;
+
+  @IsOptional()
+  @IsNumber()
+  locationLatitude?: number;
+
+  @IsOptional()
+  @IsNumber()
+  locationLongitude?: number;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   interests?: string[];

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button, Input, Logo, LoadingMoreIndicator } from '@/components'
+import { Button, Input, Logo, LoadingMoreIndicator, CityLocationInput, type CityLocation } from '@/components'
 import { onboardingService } from '@/services/onboarding'
 import parametersService from '@/services/parameters'
 import { OnboardingQuestion, OnboardingAnswer } from '@/types'
@@ -18,7 +18,7 @@ export const Onboarding: React.FC = () => {
   const [questions, setQuestions] = useState<OnboardingQuestion[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<OnboardingAnswer[]>([])
-  const [currentAnswer, setCurrentAnswer] = useState<string | string[] | number | [number, number]>('')
+  const [currentAnswer, setCurrentAnswer] = useState<string | string[] | number | [number, number] | CityLocation>('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [maxDistance, setMaxDistance] = useState(200)
@@ -76,6 +76,8 @@ export const Onboarding: React.FC = () => {
           setCurrentAnswer(currentQuestion.min)
         } else if (currentQuestion.type === 'multiple_choice' || currentQuestion.type === 'photo') {
           setCurrentAnswer([])
+        } else if (currentQuestion.type === 'city_location') {
+          setCurrentAnswer({ city: '', latitude: undefined, longitude: undefined })
         } else {
           setCurrentAnswer('')
         }
@@ -104,6 +106,13 @@ export const Onboarding: React.FC = () => {
       if (!currentAnswer || (Array.isArray(currentAnswer) && currentAnswer.length === 0)) {
         showError(t('validation.required'))
         return
+      }
+      // Validate city_location
+      if (currentQuestion.type === 'city_location' && typeof currentAnswer === 'object' && 'city' in currentAnswer) {
+        if (!currentAnswer.city) {
+          showError('Veuillez sélectionner votre ville')
+          return
+        }
       }
     }
 
@@ -352,6 +361,16 @@ export const Onboarding: React.FC = () => {
                   />
                 </div>
               </div>
+            )}
+
+            {currentQuestion.type === 'city_location' && (
+              <CityLocationInput
+                value={currentAnswer as CityLocation}
+                onChange={(value) => setCurrentAnswer(value)}
+                required={currentQuestion.required}
+                allowGeolocation={true}
+                allowManualSearch={true}
+              />
             )}
 
             {currentQuestion.type === 'photo' && (

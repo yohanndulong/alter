@@ -385,7 +385,7 @@ export const Discover: React.FC = () => {
               bio={currentProfile.bio}
               interests={currentProfile.interests}
               images={currentProfile.images}
-              distance={currentProfile.location ? 5 : undefined}
+              distance={currentProfile.distance}
               compatibilityScoreGlobal={currentProfile.compatibilityScoreGlobal}
               compatibilityScoreLove={currentProfile.compatibilityScoreLove}
               compatibilityScoreFriendship={currentProfile.compatibilityScoreFriendship}
@@ -537,13 +537,18 @@ export const Discover: React.FC = () => {
 
       <Modal
         isOpen={filterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
+        onClose={() => {
+          console.log('🔴 Filter modal closing')
+          setFilterModalOpen(false)
+        }}
         size="md"
+        closeOnBackdropClick={false}
+        enableSwipeToClose={false}
       >
         <div className="filter-modal">
           <h2 className="filter-modal-title">Filtres de recherche</h2>
 
-          <div className="filter-modal-content">
+          <div className="filter-modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="filter-item">
               <label className="filter-label">
                 Distance maximale: {filters.distance} km
@@ -554,6 +559,8 @@ export const Discover: React.FC = () => {
                 max={maxDistance}
                 value={filters.distance}
                 onChange={(e) => setFilters({ ...filters, distance: parseInt(e.target.value) })}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="filter-slider"
               />
             </div>
@@ -574,6 +581,8 @@ export const Discover: React.FC = () => {
                       setFilters({ ...filters, ageMin: min })
                     }
                   }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                 />
                 <input
                   type="range"
@@ -586,6 +595,8 @@ export const Discover: React.FC = () => {
                       setFilters({ ...filters, ageMax: max })
                     }
                   }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
                 />
                 <div
                   className="filter-dual-range-track"
@@ -608,6 +619,8 @@ export const Discover: React.FC = () => {
                 step="5"
                 value={filters.minCompatibility}
                 onChange={(e) => setFilters({ ...filters, minCompatibility: parseInt(e.target.value) })}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="filter-slider"
               />
             </div>

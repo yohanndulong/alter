@@ -15,6 +15,7 @@ export enum QuestionType {
   SLIDER = 'slider',
   RANGE = 'range',
   PHOTO = 'photo',
+  CITY_LOCATION = 'city_location',
 }
 
 @Entity('onboarding_questions')

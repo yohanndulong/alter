@@ -26,6 +26,12 @@ export const Modal: React.FC<ModalProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const touchStartY = useRef(0)
   const scrollTopAtTouchStart = useRef(0)
+  const onCloseRef = useRef(onClose)
+
+  // Garder onCloseRef à jour
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   // Bloquer le scroll du body quand la modale est ouverte
   useEffect(() => {
@@ -44,13 +50,13 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose()
+        onCloseRef.current()
       }
     }
 
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   // Gérer le bouton retour du navigateur/mobile
   useEffect(() => {
@@ -58,14 +64,23 @@ export const Modal: React.FC<ModalProps> = ({
 
     // Pusher un état dans l'historique quand la modale s'ouvre
     const modalId = `modal-${Date.now()}`
-    window.history.pushState({ modalId }, '')
+    let hasAddedState = false
 
-    const handlePopState = () => {
+    try {
+      window.history.pushState({ modalId }, '')
+      hasAddedState = true
+      console.log('📖 Modal: Added history state', modalId)
+    } catch (e) {
+      console.error('Modal: Failed to push history state', e)
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('📖 Modal: popstate event', event.state)
       // Si on revient en arrière et que la modale est ouverte, la fermer
-      if (isOpen) {
-        onClose()
-        // Empêcher la navigation en repoussant l'état
-        window.history.pushState({ modalId }, '')
+      // Vérifier que c'est bien un état sans notre modalId (retour en arrière)
+      if (event.state?.modalId !== modalId) {
+        console.log('📖 Modal: Closing due to popstate')
+        onCloseRef.current()
       }
     }
 
@@ -74,11 +89,19 @@ export const Modal: React.FC<ModalProps> = ({
     return () => {
       window.removeEventListener('popstate', handlePopState)
       // Nettoyer l'historique si la modale se ferme normalement
-      if (window.history.state?.modalId === modalId) {
-        window.history.back()
+      if (hasAddedState) {
+        try {
+          if (window.history.state?.modalId === modalId) {
+            console.log('📖 Modal: Cleaning history state')
+            window.history.back()
+          }
+        } catch (e) {
+          // Ignorer les erreurs si l'historique a déjà été modifié
+          console.debug('Modal: Unable to clean history state', e)
+        }
       }
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   // Gestion du swipe to close
   const handleTouchStart = (e: React.TouchEvent) => {

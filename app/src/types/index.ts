@@ -20,6 +20,7 @@ export interface User {
     longitude: number
   }
   city?: string
+  distance?: number // Distance en km par rapport à l'utilisateur actuel
   sexualOrientation?: string
   onboardingComplete: boolean
   isAdmin?: boolean
@@ -111,7 +112,7 @@ export interface Message {
 export interface OnboardingQuestion {
   id: string
   key: string
-  type: 'text' | 'single_choice' | 'multiple_choice' | 'date' | 'number' | 'slider' | 'range' | 'photo'
+  type: 'text' | 'single_choice' | 'multiple_choice' | 'date' | 'number' | 'slider' | 'range' | 'photo' | 'city_location'
   question: string
   placeholder?: string
   options?: string[]

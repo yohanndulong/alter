@@ -97,6 +97,13 @@
   min-width: 0;
 }
 
+.compatibility-list-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  flex-wrap: wrap;
+}
+
 .compatibility-list-item-name {
   margin: 0;
   font-size: var(--font-size-lg);
@@ -105,6 +112,15 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.compatibility-list-item-distance {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
 }
 
 .compatibility-evolution-badge {

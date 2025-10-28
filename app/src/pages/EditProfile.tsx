@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Modal, Input } from '@/components'
+import { Card, Modal, Input, CityAutocomplete } from '@/components'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast, useBackButtonNavigation } from '@/hooks'
 import { api } from '@/services/api'
@@ -55,11 +55,17 @@ export const EditProfile: React.FC = () => {
 
   // Debounce timer for auto-save
   const saveTimerRef = useRef<NodeJS.Timeout>()
+  const isInitializedRef = useRef(false)
 
+  // Load photos and parameters once on mount
   useEffect(() => {
     loadPhotos()
     loadMinPhotos()
-    if (user) {
+  }, [])
+
+  // Load user data once when user is available
+  useEffect(() => {
+    if (user && !isInitializedRef.current) {
       setCity(user.city || '')
       setSexualOrientation(user.sexualOrientation || '')
       setPreferences({
@@ -69,6 +75,7 @@ export const EditProfile: React.FC = () => {
         distance: user.preferenceDistance || 50,
         minCompatibility: user.preferenceMinCompatibility ?? defaultMinCompatibility
       })
+      isInitializedRef.current = true
     }
   }, [user, defaultMinCompatibility])
 
@@ -110,8 +117,8 @@ export const EditProfile: React.FC = () => {
         setSaveIndicator('saving')
         await api.put('/users/me', data)
 
-        // Update local user context
-        updateUser(data)
+        // Don't update local user context to avoid triggering infinite loops
+        // The data is already saved to the API and will be reflected when needed
 
         setSaveIndicator('saved')
         setTimeout(() => setSaveIndicator('idle'), 2000)
@@ -120,11 +127,15 @@ export const EditProfile: React.FC = () => {
         setSaveIndicator('idle')
       }
     }, 800) // 800ms debounce
-  }, [updateUser])
+  }, [])
 
-  const handleCityChange = (value: string) => {
-    setCity(value)
-    autoSave({ city: value })
+  const handleCityChange = (cityName: string, latitude?: number, longitude?: number) => {
+    setCity(cityName)
+    autoSave({
+      city: cityName,
+      locationLatitude: latitude,
+      locationLongitude: longitude
+    })
   }
 
   const handleSexualOrientationChange = (value: string) => {
@@ -347,15 +358,11 @@ export const EditProfile: React.FC = () => {
 
           <Card>
             <div className="edit-profile-preference-item">
-              <label className="edit-profile-preference-label">
-                {t('editProfile.city')}
-              </label>
-              <Input
-                type="text"
+              <CityAutocomplete
+                label={t('editProfile.city')}
                 placeholder={t('editProfile.cityPlaceholder')}
                 value={city}
-                onChange={(e) => handleCityChange(e.target.value)}
-                fullWidth
+                onChange={handleCityChange}
               />
             </div>
 
