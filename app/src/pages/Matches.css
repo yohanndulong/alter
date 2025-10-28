@@ -2,7 +2,8 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(60px + env(safe-area-inset-bottom));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
 }
 
@@ -28,7 +29,6 @@
   align-items: center;
   justify-content: flex-start;
   padding: var(--spacing-4);
-  padding-top: calc(var(--spacing-4) + env(safe-area-inset-top));
   flex-shrink: 0;
   background: var(--color-background);
 }
