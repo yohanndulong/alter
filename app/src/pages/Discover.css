@@ -1,9 +1,10 @@
 .discover-container {
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex;
   flex-direction: column;
   padding: 0 var(--spacing-4);
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: calc(var(--spacing-4) + env(safe-area-inset-top, 0px));
   padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
 }
@@ -86,7 +87,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-4);
-  padding: var(--spacing-4) 0;
+  padding: 0 0 var(--spacing-4) 0;
   background: var(--color-background);
   flex-shrink: 0;
 }
@@ -612,7 +613,6 @@
 
   .discover-header {
     padding: var(--spacing-3) 0;
-    padding-top: calc(var(--spacing-3) + env(safe-area-inset-top));
   }
 
   .discover-avatar {

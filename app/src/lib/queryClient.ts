@@ -38,14 +38,14 @@ export const queryClient = new QueryClient({
       // Fonction pour gérer les erreurs globalement
       throwOnError: false,
 
-      // Network mode: online-first mais garde le cache offline
-      networkMode: 'online',
+      // Network mode: offlineFirst permet d'utiliser le cache même sans réseau
+      networkMode: 'offlineFirst',
     },
     mutations: {
       // Retry pour les mutations en cas d'erreur réseau
       retry: 1,
 
-      // Network mode pour les mutations
+      // Network mode pour les mutations: online seulement
       networkMode: 'online',
     },
   },

@@ -26,16 +26,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const token = localStorage.getItem('auth_token')
         if (token) {
+          // Charger l'utilisateur depuis le cache d'abord
+          const cachedUser = localStorage.getItem('cached_user')
+          if (cachedUser) {
+            try {
+              setUser(JSON.parse(cachedUser))
+            } catch (e) {
+              console.error('Failed to parse cached user:', e)
+            }
+          }
+
           try {
             const userData = await api.get<User>('/auth/me')
             setUser(userData)
+            // Mettre en cache l'utilisateur
+            localStorage.setItem('cached_user', JSON.stringify(userData))
 
             // Initialiser les notifications push sur plateforme native
             if (Capacitor.isNativePlatform()) {
               await notificationService.initialize()
             }
-          } catch {
-            localStorage.removeItem('auth_token')
+          } catch (error: any) {
+            // Ne supprimer le token que si c'est une vraie erreur 401 (non autorisé)
+            // Pas pour les erreurs réseau ou serveur
+            if (error?.response?.status === 401) {
+              console.log('Auth token invalid, logging out')
+              localStorage.removeItem('auth_token')
+              localStorage.removeItem('cached_user')
+              setUser(null)
+            } else {
+              // Erreur réseau ou serveur : garder le token et l'utilisateur en cache
+              console.log('Network/server error, keeping cached user')
+              // Si on n'a pas de user en cache, on ne peut pas faire grand chose
+              if (!cachedUser) {
+                console.warn('No cached user available, user will need to re-login when back online')
+              }
+            }
           }
         }
       } catch (error) {
@@ -51,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, code: string) => {
     const { token, user: userData } = await api.post<{ token: string; user: User }>('/auth/login', { email, code })
     localStorage.setItem('auth_token', token)
+    localStorage.setItem('cached_user', JSON.stringify(userData))
     setUser(userData)
 
     // Initialiser les notifications push sur plateforme native
@@ -62,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (email: string) => {
     const { token, user: userData } = await api.post<{ token: string; user: User }>('/auth/register', { email })
     localStorage.setItem('auth_token', token)
+    localStorage.setItem('cached_user', JSON.stringify(userData))
     setUser(userData)
 
     // Initialiser les notifications push sur plateforme native
@@ -77,12 +105,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('cached_user')
     setUser(null)
   }
 
   const updateUser = (updates: Partial<User>) => {
     if (user) {
-      setUser({ ...user, ...updates })
+      const updatedUser = { ...user, ...updates }
+      setUser(updatedUser)
+      // Mettre à jour le cache
+      localStorage.setItem('cached_user', JSON.stringify(updatedUser))
     }
   }
 
