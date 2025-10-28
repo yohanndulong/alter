@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AppController } from './app.controller';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
@@ -100,5 +101,6 @@ import { FcmToken } from './modules/notifications/entities/fcm-token.entity';
     AdminModule,
     NotificationsModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}
