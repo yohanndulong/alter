@@ -60,4 +60,4 @@ export { CityAutocomplete } from './CityAutocomplete'
 export type { CityAutocompleteProps } from './CityAutocomplete'
 
 export { CityLocationInput } from './CityLocationInput'
-export type { CityLocationInputProps, CityLocation } from './CityLocationInput'
+export type { CityLocationInputProps } from './CityLocationInput'

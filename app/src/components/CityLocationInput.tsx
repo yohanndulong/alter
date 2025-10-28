@@ -1,13 +1,8 @@
 import React, { useState } from 'react'
 import { CityAutocomplete } from './CityAutocomplete'
 import { useGeolocation } from '../hooks/useGeolocation'
+import { CityLocation } from '@/types'
 import './CityLocationInput.css'
-
-export interface CityLocation {
-  city: string
-  latitude?: number
-  longitude?: number
-}
 
 export interface CityLocationInputProps {
   value: CityLocation

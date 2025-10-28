@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Card, Modal, Input, CityAutocomplete } from '@/components'
+import { Card, Modal, CityAutocomplete } from '@/components'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast, useBackButtonNavigation } from '@/hooks'
 import { api } from '@/services/api'
@@ -27,7 +27,7 @@ const SEXUAL_ORIENTATION_OPTIONS = [
 export const EditProfile: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user, updateUser } = useAuth()
+  const { user } = useAuth()
   const { success, error: showError } = useToast()
 
   // Gérer le bouton retour - retourner au profil

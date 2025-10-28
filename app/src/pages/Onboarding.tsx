@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
-import { Button, Input, Logo, LoadingMoreIndicator, CityLocationInput, type CityLocation } from '@/components'
+import { Button, Input, Logo, LoadingMoreIndicator, CityLocationInput } from '@/components'
 import { onboardingService } from '@/services/onboarding'
 import parametersService from '@/services/parameters'
-import { OnboardingQuestion, OnboardingAnswer } from '@/types'
+import { OnboardingQuestion, OnboardingAnswer, CityLocation } from '@/types'
 import { useToast } from '@/hooks'
 import './Onboarding.css'
 
@@ -305,7 +305,7 @@ export const Onboarding: React.FC = () => {
             {currentQuestion.type === 'slider' && (
               <div className="onboarding-slider">
                 <div className="onboarding-slider-label">
-                  {currentAnswer} km
+                  {currentAnswer as number} km
                 </div>
                 <input
                   type="range"

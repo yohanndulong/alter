@@ -109,6 +109,12 @@ export interface Message {
   createdAt: Date
 }
 
+export interface CityLocation {
+  city: string
+  latitude?: number
+  longitude?: number
+}
+
 export interface OnboardingQuestion {
   id: string
   key: string
@@ -124,7 +130,7 @@ export interface OnboardingQuestion {
 export interface OnboardingAnswer {
   questionId: string
   questionKey?: string // Added to help backend identify which field to update
-  answer: string | string[] | number | Date | [number, number]
+  answer: string | string[] | number | Date | [number, number] | CityLocation
 }
 
 export interface ChatMessage {
