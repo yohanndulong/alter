@@ -18,6 +18,26 @@ export interface LlmResponse {
   };
 }
 
+/**
+ * Nettoie et parse une réponse JSON du LLM
+ * Gère les cas où le LLM entoure le JSON de backticks markdown
+ */
+function cleanAndParseJSON<T = any>(content: string, logger: Logger, context: string): T {
+  let cleanedContent = content.trim();
+
+  // Vérifier si le contenu commence par ```json et finit par ```
+  if (cleanedContent.startsWith('```json')) {
+    cleanedContent = cleanedContent.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
+  } else if (cleanedContent.startsWith('```')) {
+    // Cas où c'est juste ``` sans le "json"
+    cleanedContent = cleanedContent.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
+  }
+
+  logger.debug(`Cleaned content for JSON parsing (${context})`);
+
+  return JSON.parse(cleanedContent);
+}
+
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
@@ -166,7 +186,7 @@ export class LlmService {
       temperature: 0.5,
     });
 
-    return JSON.parse(response.content);
+    return cleanAndParseJSON(response.content, this.logger, 'compatibility analysis');
   }
 
   /**
@@ -195,7 +215,7 @@ export class LlmService {
       temperature: 0.4,
     });
 
-    return JSON.parse(response.content);
+    return cleanAndParseJSON(response.content, this.logger, 'conversation quality');
   }
 
   /**
@@ -259,7 +279,19 @@ Sois chaleureux, encourageant et professionnel. Garde tes réponses concises (2-
       maxTokens: 300,
     });
 
-    return JSON.parse(response.content);
+    try {
+      return cleanAndParseJSON<{ message: string }>(response.content, this.logger, 'share message');
+    } catch (error) {
+      this.logger.error('Failed to parse share message response:', {
+        error: error.message,
+        content: response.content,
+      });
+
+      // Fallback: retourner un message générique
+      return {
+        message: "Je viens de rejoindre Alter ! Une nouvelle aventure commence 🌟"
+      };
+    }
   }
 
   /**
@@ -423,20 +455,7 @@ Sois chaleureux, encourageant et professionnel. Garde tes réponses concises (2-
     });
 
     try {
-      // Nettoyer le contenu si le LLM a ajouté des backticks markdown
-      let cleanedContent = response.content.trim();
-
-      // Vérifier si le contenu commence par ```json et finit par ```
-      if (cleanedContent.startsWith('```json')) {
-        cleanedContent = cleanedContent.replace(/^```json\s*\n?/, '').replace(/\n?```\s*$/, '');
-      } else if (cleanedContent.startsWith('```')) {
-        // Cas où c'est juste ``` sans le "json"
-        cleanedContent = cleanedContent.replace(/^```\s*\n?/, '').replace(/\n?```\s*$/, '');
-      }
-
-      this.logger.debug('Cleaned content for JSON parsing');
-
-      const parsed = JSON.parse(cleanedContent);
+      const parsed = cleanAndParseJSON(response.content, this.logger, 'alter structured response');
 
       // Validation et nettoyage du message
       if (parsed.message && typeof parsed.message === 'string') {
