@@ -892,19 +892,108 @@
   }
 }
 
-/* Share button dans le modal de profil */
-.alter-chat-profile-share {
-  margin-top: var(--spacing-6);
-  padding-top: var(--spacing-4);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+/* Share button dans le header - Style sexy */
+.alter-chat-header-share {
   display: flex;
-  justify-content: center;
+  align-items: center;
 }
 
-[data-theme='dark'] .alter-chat-profile-share {
-  border-top-color: rgba(255, 255, 255, 0.05);
+.alter-chat-header-share .share-button {
+  margin: 0;
 }
 
-[data-theme='blue'] .alter-chat-profile-share {
-  border-top-color: rgba(94, 129, 172, 0.2);
+.alter-chat-header-share .btn {
+  padding: var(--spacing-2);
+  min-width: auto;
+  background: linear-gradient(135deg, var(--color-primary-500), var(--color-secondary-500));
+  border: none;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.alter-chat-header-share .btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.alter-chat-header-share .btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.alter-chat-header-share .btn:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.alter-chat-header-share .btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.alter-chat-header-share .btn__icon {
+  margin: 0;
+  position: relative;
+  z-index: 1;
+  animation: shareIconPulse 2s ease-in-out infinite;
+}
+
+@keyframes shareIconPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.alter-chat-header-share .btn:hover .btn__icon {
+  animation: shareIconBounce 0.6s ease;
+}
+
+@keyframes shareIconBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-4px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-2px);
+  }
+}
+
+.alter-chat-header-share .btn__content {
+  display: none;
+}
+
+/* Variante dark theme */
+[data-theme='dark'] .alter-chat-header-share .btn {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5);
+}
+
+[data-theme='dark'] .alter-chat-header-share .btn:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+}
+
+/* Variante blue theme */
+[data-theme='blue'] .alter-chat-header-share .btn {
+  background: linear-gradient(135deg, var(--color-primary-400), var(--color-accent-500));
+  box-shadow: 0 4px 12px rgba(94, 129, 172, 0.4);
+}
+
+[data-theme='blue'] .alter-chat-header-share .btn:hover {
+  box-shadow: 0 6px 20px rgba(94, 129, 172, 0.5);
 }
