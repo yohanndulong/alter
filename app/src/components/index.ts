@@ -61,3 +61,6 @@ export type { CityAutocompleteProps } from './CityAutocomplete'
 
 export { CityLocationInput } from './CityLocationInput'
 export type { CityLocationInputProps } from './CityLocationInput'
+
+export { ShareButton } from './ShareButton'
+export type { ShareButtonProps } from './ShareButton'

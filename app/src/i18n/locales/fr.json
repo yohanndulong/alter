@@ -302,5 +302,15 @@
     "feature2": "Messages directs sans limite",
     "feature3": "Visibilité de profil prioritaire",
     "upgrade": "Passer à Premium"
+  },
+  "share": {
+    "button": "Partager mon profil",
+    "copiedToClipboard": "Message copié dans le presse-papiers !",
+    "error": "Erreur lors de la génération du message",
+    "errorSharing": "Erreur lors du partage",
+    "errorCopy": "Erreur lors de la copie",
+    "previewTitle": "Aperçu de votre message",
+    "copy": "Copier",
+    "shareNow": "Partager"
   }
 }

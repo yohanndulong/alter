@@ -29,4 +29,9 @@ export class AlterChatController {
     await this.alterChatService.resetAlterChat(user.id);
     return { message: 'ALTER chat reset successfully' };
   }
+
+  @Get('share-message')
+  async generateShareMessage(@CurrentUser() user: User) {
+    return this.alterChatService.generateShareMessage(user.id);
+  }
 }

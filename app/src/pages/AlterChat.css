@@ -22,8 +22,6 @@
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
@@ -33,12 +31,10 @@
 
 [data-theme='dark'] .alter-chat {
   background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='blue'] .alter-chat {
   background: rgba(10, 25, 41, 0.4);
-  border: 1px solid rgba(94, 129, 172, 0.2);
 }
 
 .alter-chat-header {
@@ -868,7 +864,6 @@
   .alter-chat {
     height: calc(100vh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     max-height: calc(100vh - 60px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    border-radius: 0;
   }
 
   .alter-chat-header {
@@ -895,4 +890,21 @@
   .alter-chat-profile-modal-overlay {
     padding: var(--spacing-2);
   }
+}
+
+/* Share button dans le modal de profil */
+.alter-chat-profile-share {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-4);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+}
+
+[data-theme='dark'] .alter-chat-profile-share {
+  border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='blue'] .alter-chat-profile-share {
+  border-top-color: rgba(94, 129, 172, 0.2);
 }

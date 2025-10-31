@@ -1,0 +1,198 @@
+.share-button {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+
+.share-button__error {
+  font-size: var(--font-size-sm);
+  color: var(--color-error-500);
+  padding: var(--spacing-2);
+  background-color: var(--color-error-50);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+/* Modal de prévisualisation */
+.share-preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: var(--spacing-4);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.share-preview-modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-2xl);
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+[data-theme='dark'] .share-preview-modal {
+  background: var(--color-surface-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='blue'] .share-preview-modal {
+  background: var(--color-surface-blue);
+  border: 1px solid rgba(94, 129, 172, 0.2);
+}
+
+.share-preview-header {
+  padding: var(--spacing-5);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+[data-theme='dark'] .share-preview-header {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='blue'] .share-preview-header {
+  border-bottom-color: rgba(94, 129, 172, 0.2);
+}
+
+.share-preview-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.share-preview-close {
+  background: none;
+  border: none;
+  font-size: 32px;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.share-preview-close:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.share-preview-content {
+  padding: var(--spacing-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-4);
+}
+
+.share-preview-message {
+  font-size: var(--font-size-lg);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  padding: var(--spacing-5);
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--color-primary-200);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+[data-theme='dark'] .share-preview-message {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-primary-400);
+}
+
+[data-theme='blue'] .share-preview-message {
+  background: rgba(94, 129, 172, 0.1);
+  border-color: var(--color-primary-400);
+}
+
+.share-preview-hashtags {
+  font-size: var(--font-size-md);
+  color: var(--color-primary-500);
+  font-weight: 500;
+  text-align: center;
+}
+
+.share-preview-actions {
+  padding: var(--spacing-5);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  gap: var(--spacing-3);
+  justify-content: flex-end;
+}
+
+[data-theme='dark'] .share-preview-actions {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='blue'] .share-preview-actions {
+  border-top-color: rgba(94, 129, 172, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .share-preview-overlay {
+    padding: var(--spacing-2);
+  }
+
+  .share-preview-header {
+    padding: var(--spacing-4);
+  }
+
+  .share-preview-content {
+    padding: var(--spacing-4);
+  }
+
+  .share-preview-message {
+    font-size: var(--font-size-md);
+    padding: var(--spacing-4);
+  }
+
+  .share-preview-actions {
+    padding: var(--spacing-4);
+    flex-direction: column;
+  }
+
+  .share-preview-actions .btn {
+    width: 100%;
+  }
+}

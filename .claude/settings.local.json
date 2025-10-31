@@ -6,7 +6,17 @@
       "Bash(cat:*)",
       "Bash(curl:*)",
       "Bash(python -m json.tool:*)",
-      "Bash(ionic:*)"
+      "Bash(ionic:*)",
+      "Bash(npm run typeorm:query:*)",
+      "Bash(npm run build:web:*)",
+      "Bash(npm run android:clean:full:*)",
+      "Bash(npm run android:clean:*)",
+      "Bash(adb shell pm list packages:*)",
+      "Bash(npm run android:uninstall:*)",
+      "Bash(npm run build:android:staging:*)",
+      "Bash(npm run android:reinstall:debug:*)",
+      "Bash(./gradlew.bat:*)",
+      "Bash(npm run android:install:debug:*)"
     ],
     "deny": [],
     "ask": []

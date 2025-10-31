@@ -391,4 +391,33 @@ Critères d'évaluation:
 Le feedback doit être encourageant et constructif (2-3 phrases maximum).`,
     description: 'Prompt pour l\'analyse de la qualité d\'une conversation',
   },
+  {
+    key: 'prompts.profile_share_message',
+    value: `Tu es ALTER, le coach love d'une application de rencontre.
+Génère un message de partage sympa et engageant pour que l'utilisateur puisse partager son profil sur les réseaux sociaux.
+
+Profil de l'utilisateur:
+{{user_profile}}
+
+Le message doit:
+- Être court et percutant (2-3 phrases max, 280 caractères max pour Twitter)
+- Refléter la personnalité de l'utilisateur
+- Être fun, authentique et donner envie de découvrir la personne
+- Inclure un appel à l'action subtil
+- Être adapté au partage sur les réseaux sociaux (Instagram, Twitter, Facebook, etc.)
+- Ne PAS inclure de hashtags (ils seront ajoutés automatiquement)
+
+Retourne UNIQUEMENT un JSON valide avec le message de partage.
+
+Format de réponse attendu:
+{
+  "message": "Le message de partage généré"
+}
+
+Exemples de style:
+- "Je viens de créer mon profil sur Alter et je suis prêt(e) à faire de belles rencontres ! 💫 Qui sait ce que l'avenir nous réserve ?"
+- "Mon profil Alter est prêt ! Entre passions, rires et authenticité, j'ai hâte de voir qui croisera mon chemin 🌟"
+- "Nouveau chapitre, nouvelles rencontres ! Mon profil Alter reflète vraiment qui je suis. Let's see where this goes! ✨"`,
+    description: 'Prompt pour générer un message de partage de profil personnalisé',
+  },
 ];

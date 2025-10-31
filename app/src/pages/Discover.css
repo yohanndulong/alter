@@ -1,5 +1,4 @@
 .discover-container {
-  height: 100vh;
   height: 100dvh; /* Dynamic viewport height for mobile */
   display: flex;
   flex-direction: column;
@@ -607,8 +606,11 @@
 
 @media (max-width: 768px) {
   .discover-container {
-    padding: 0 var(--spacing-3);
-    min-height: 100vh;
+    padding: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: 60px;
+    align-items: stretch;
+    height: 100vh;
   }
 
   .discover-header {

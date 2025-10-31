@@ -30,6 +30,7 @@
     "android:bundle:staging": "npm run build:android:staging && cd android && .\\gradlew.bat bundleRelease",
     "android:bundle:main": "npm run build:android:main && cd android && .\\gradlew.bat bundleRelease",
     "android:run": "npm run build:android:dev && npx cap run android",
+    "android:run:staging": "npm run build:android:staging && npx cap run android",
     "release:staging": "npm run version:increment && npm run android:bundle:staging",
     "release:main": "npm run version:increment && npm run android:bundle:main",
     "deploy:internal:staging": "npm run release:staging && cd android && .\\gradlew.bat publishReleaseBundle",

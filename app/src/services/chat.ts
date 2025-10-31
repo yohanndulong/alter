@@ -264,4 +264,11 @@ export const chatService = {
   async getAiMessages(): Promise<ChatMessage[]> {
     return api.get<ChatMessage[]>('/chat/ai/messages')
   },
+
+  /**
+   * Génère un message de partage personnalisé pour les réseaux sociaux
+   */
+  async generateShareMessage(): Promise<{ message: string }> {
+    return api.get<{ message: string }>('/chat/ai/share-message')
+  },
 }

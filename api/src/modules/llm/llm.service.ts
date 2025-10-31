@@ -235,6 +235,34 @@ Sois chaleureux, encourageant et professionnel. Garde tes réponses concises (2-
   }
 
   /**
+   * Génère un message de partage personnalisé pour les réseaux sociaux
+   */
+  async generateShareMessage(userProfile: string): Promise<{ message: string }> {
+    // Récupérer le prompt depuis les paramètres
+    const promptTemplate = await this.parametersService.get<string>('prompts.profile_share_message');
+
+    // Remplacer les placeholders
+    const systemPrompt = replacePlaceholders(promptTemplate, {
+      user_profile: userProfile,
+    });
+
+    const messages: LlmMessage[] = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+    ];
+
+    const response = await this.chat(messages, {
+      jsonMode: true,
+      temperature: 0.8,
+      maxTokens: 300,
+    });
+
+    return JSON.parse(response.content);
+  }
+
+  /**
    * Génère une réponse structurée pour Alter Chat avec le nouveau prompt
    */
   async generateAlterStructuredResponse(

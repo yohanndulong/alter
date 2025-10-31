@@ -289,4 +289,57 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
       // Ne pas bloquer si l'embedding échoue
     }
   }
+
+  /**
+   * Génère un message de partage personnalisé pour les réseaux sociaux
+   */
+  async generateShareMessage(userId: string): Promise<{ message: string }> {
+    // Récupérer l'utilisateur avec toutes ses données
+    const user = await this.usersService.findById(userId, false);
+
+    // Construire un profil textuel pour le LLM
+    let userProfile = '';
+
+    if (user.firstName) {
+      userProfile += `Prénom: ${user.firstName}\n`;
+    }
+
+    if (user.alterSummary) {
+      userProfile += `\nRésumé du profil:\n${user.alterSummary}\n`;
+    }
+
+    if (user.bio) {
+      userProfile += `\nBio: ${user.bio}\n`;
+    }
+
+    if (user.interests && user.interests.length > 0) {
+      userProfile += `\nCentres d'intérêt: ${user.interests.join(', ')}\n`;
+    }
+
+    if (user.searchObjectives && user.searchObjectives.length > 0) {
+      userProfile += `\nRecherche: ${user.searchObjectives.join(', ')}\n`;
+    }
+
+    // Récupérer l'état actuel du profil ALTER
+    const profileState = await this.getCurrentProfileState(userId);
+
+    if (profileState.profileAI) {
+      userProfile += `\nProfil AI:\n`;
+      Object.entries(profileState.profileAI).forEach(([key, value]) => {
+        if (value) {
+          userProfile += `- ${key}: ${value}\n`;
+        }
+      });
+    }
+
+    if (!userProfile.trim()) {
+      // Si aucune donnée n'est disponible, retourner un message générique
+      return {
+        message: "Je viens de rejoindre Alter ! Une nouvelle aventure commence 🌟"
+      };
+    }
+
+    // Générer le message via LLM
+    return this.llmService.generateShareMessage(userProfile);
+  }
 }

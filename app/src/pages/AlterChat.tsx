@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Logo, LoadingMoreIndicator } from '@/components'
+import { Logo, LoadingMoreIndicator, ShareButton } from '@/components'
 import { chatService } from '@/services/chat'
 import { ChatMessage } from '@/types'
 import { useBackButtonNavigation, useAlterMessages, useAddAlterMessageToCache, chatKeys } from '@/hooks'
@@ -446,6 +446,9 @@ export const AlterChat: React.FC = () => {
                     </div>
                   </div>
                 )}
+                <div className="alter-chat-profile-share">
+                  <ShareButton variant="primary" size="md" />
+                </div>
               </div>
             </div>
           </div>
