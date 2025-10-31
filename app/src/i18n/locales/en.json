@@ -309,6 +309,7 @@
     "error": "Error generating message",
     "errorSharing": "Error while sharing",
     "errorCopy": "Error copying message",
+    "notSupported": "Native sharing is not supported on this device. Please use the \"Copy\" button instead.",
     "previewTitle": "Preview your message",
     "copy": "Copy",
     "shareNow": "Share"

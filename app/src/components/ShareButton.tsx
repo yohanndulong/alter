@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Share } from '@capacitor/share'
 import { chatService } from '@/services/chat'
 import { Button } from './Button'
 import './ShareButton.css'
@@ -42,29 +43,27 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
     try {
       const fullMessage = `${generatedMessage}\n\n#Alter #Dating #NewBeginnings`
 
-      // Vérifier si l'API Web Share est disponible
-      if (navigator.share) {
-        await navigator.share({
+      // Utiliser le plugin Capacitor Share pour un meilleur support natif
+      const canShare = await Share.canShare()
+
+      if (canShare.value) {
+        await Share.share({
           title: 'Mon profil Alter',
           text: fullMessage,
+          dialogTitle: 'Partager mon profil',
           // On pourrait ajouter une URL vers le profil public si disponible
           // url: 'https://alterdating.com/profile/...'
         })
+        // Fermer la modal uniquement si le partage a réussi
+        setShowPreview(false)
       } else {
-        // Fallback : copier dans le presse-papiers
-        await navigator.clipboard.writeText(fullMessage)
-        alert(t('share.copiedToClipboard') || 'Message copié dans le presse-papiers !')
+        // Si le partage n'est pas disponible, afficher un message
+        setError(t('share.notSupported') || 'Le partage natif n\'est pas supporté sur cet appareil. Utilisez le bouton "Copier" à la place.')
       }
-
-      // Fermer la modal après le partage
-      setShowPreview(false)
     } catch (err: any) {
-      // L'utilisateur a annulé le partage
-      if (err.name === 'AbortError') {
-        return
-      }
-
       console.error('Error sharing profile:', err)
+      // Ne pas afficher d'erreur si l'utilisateur a simplement annulé
+      // Le plugin Capacitor ne lève pas d'exception pour l'annulation
       setError(t('share.errorSharing') || 'Erreur lors du partage')
     }
   }
