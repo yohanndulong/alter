@@ -5,6 +5,7 @@ import { User, Gender } from '../users/entities/user.entity';
 import { Match } from '../matching/entities/match.entity';
 import { Like } from '../matching/entities/like.entity';
 import { Message } from '../chat/entities/message.entity';
+import { CompatibilityCache } from '../matching/entities/compatibility-cache.entity';
 import { EmbeddingsService } from '../embeddings/embeddings.service';
 import { PhotosService } from '../users/photos.service';
 import axios from 'axios';
@@ -30,6 +31,8 @@ export class TestDataService {
     private readonly likesRepository: Repository<Like>,
     @InjectRepository(Message)
     private readonly messagesRepository: Repository<Message>,
+    @InjectRepository(CompatibilityCache)
+    private readonly compatibilityCacheRepository: Repository<CompatibilityCache>,
     private readonly embeddingsService: EmbeddingsService,
     private readonly photosService: PhotosService,
   ) {}
@@ -578,6 +581,14 @@ export class TestDataService {
       .execute();
     this.logger.log(`✅ ${deleteLikesResult.affected || 0} likes supprimés`);
 
+    // Supprimer le cache de compatibilité des test users
+    const deleteCompatibilityCacheResult = await this.compatibilityCacheRepository
+      .createQueryBuilder()
+      .delete()
+      .where('userId IN (:...ids) OR targetUserId IN (:...ids)', { ids: testUserIds })
+      .execute();
+    this.logger.log(`✅ ${deleteCompatibilityCacheResult.affected || 0} entrées de cache de compatibilité supprimées`);
+
     // Supprimer les utilisateurs de test
     await this.usersRepository
       .createQueryBuilder()
@@ -597,6 +608,7 @@ export class TestDataService {
     await this.messagesRepository.delete({});
     await this.matchesRepository.delete({});
     await this.likesRepository.delete({});
+    await this.compatibilityCacheRepository.delete({});
     await this.usersRepository.delete({});
 
     this.logger.log('✅ Toutes les données ont été supprimées');
