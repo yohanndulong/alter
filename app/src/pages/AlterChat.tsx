@@ -48,8 +48,24 @@ export const AlterChat: React.FC = () => {
 
     // Listen for incoming Alter messages
     chatService.onAlterMessage((message: ChatMessage) => {
-      // Ajouter au cache React Query et au storage persistant
-      addMessageToCache(message)
+      // Si c'est un message utilisateur du serveur, supprimer les messages optimistes temporaires
+      if (message.role === 'user') {
+        queryClient.setQueryData<ChatMessage[]>(
+          chatKeys.alterMessages(),
+          (old = []) => {
+            // Filtrer les messages temporaires avec le même contenu
+            const filtered = old.filter(m =>
+              !(m.id.startsWith('temp-') && m.content === message.content && m.role === 'user')
+            )
+            // Ajouter le vrai message si pas déjà présent
+            const exists = filtered.some(m => m.id === message.id)
+            return exists ? filtered : [...filtered, message]
+          }
+        )
+      } else {
+        // Pour les messages assistant, ajouter normalement
+        addMessageToCache(message)
+      }
 
       // Only stop loading indicator when Alter (assistant) responds
       if (message.role === 'assistant') {
@@ -213,11 +229,22 @@ export const AlterChat: React.FC = () => {
   const handleSend = async () => {
     if (!input.trim() || isSending || !user?.id) return
 
-    const content = input
+    const content = input.trim()
     setInput('')
     setIsSending(true)
 
-    // Send message via WebSocket (userId extrait du JWT côté serveur)
+    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
+    const optimisticUserMessage: ChatMessage = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    }
+
+    // Ajouter au cache pour affichage instantané
+    addMessageToCache(optimisticUserMessage)
+
+    // Envoyer via WebSocket (le serveur renverra le vrai message avec l'ID définitif)
     chatService.sendAlterMessage(content)
   }
 
@@ -276,7 +303,18 @@ export const AlterChat: React.FC = () => {
     })
     setIsSending(true)
 
-    // Send selected options via WebSocket (userId extrait du JWT côté serveur)
+    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
+    const optimisticUserMessage: ChatMessage = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    }
+
+    // Ajouter au cache pour affichage instantané
+    addMessageToCache(optimisticUserMessage)
+
+    // Envoyer via WebSocket (userId extrait du JWT côté serveur)
     chatService.sendAlterMessage(content)
   }
 
@@ -297,8 +335,20 @@ export const AlterChat: React.FC = () => {
     setShowIntentionMenu(false)
     setIsSending(true)
 
-    // Envoyer un message au LLM pour indiquer le changement d'intention (userId extrait du JWT côté serveur)
+    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
     const intentionMessage = `Je souhaite maintenant explorer l'aspect ${getIntentionLabel(newIntention)} de mon profil.`
+
+    const optimisticUserMessage: ChatMessage = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      role: 'user',
+      content: intentionMessage,
+      timestamp: new Date(),
+    }
+
+    // Ajouter au cache pour affichage instantané
+    addMessageToCache(optimisticUserMessage)
+
+    // Envoyer au LLM (userId extrait du JWT côté serveur)
     chatService.sendAlterMessage(intentionMessage)
   }
 
