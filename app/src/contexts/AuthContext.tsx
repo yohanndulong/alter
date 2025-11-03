@@ -6,6 +6,7 @@ import { Capacitor } from '@capacitor/core'
 import { alterDB } from '@/utils/indexedDB'
 import { queryClient } from '@/lib/queryClient'
 import { chatService } from '@/services/chat'
+import { alterChatStorage } from '@/utils/alterChatStorage'
 
 interface AuthContextType {
   user: User | null
@@ -110,10 +111,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 2. Nettoyer IndexedDB (matches, messages, metadata)
     await alterDB.clearAll()
 
-    // 3. Nettoyer React Query cache
+    // 3. Nettoyer les messages Alter Chat (secureStorage/Preferences sur mobile)
+    await alterChatStorage.clearMessages()
+
+    // 4. Nettoyer React Query cache
     queryClient.clear()
 
-    // 4. Nettoyer localStorage (sauf préférences globales: theme et language)
+    // 5. Nettoyer localStorage (sauf préférences globales: theme et language)
     const theme = localStorage.getItem('theme')
     const language = localStorage.getItem('language')
 
@@ -123,12 +127,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (theme) localStorage.setItem('theme', theme)
     if (language) localStorage.setItem('language', language)
 
-    // 5. Désenregistrer les notifications push
+    // 6. Désenregistrer les notifications push
     if (Capacitor.isNativePlatform()) {
       await notificationService.unregister()
     }
 
-    // 6. Réinitialiser l'état utilisateur
+    // 7. Réinitialiser l'état utilisateur
     setUser(null)
 
     console.log('✅ Logout complete - all caches cleared')
