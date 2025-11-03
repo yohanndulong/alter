@@ -148,7 +148,7 @@ Es-tu prêt(e) à commencer ?`,
     this.logger.log(`ALTER chat reset completed for user ${userId}`);
   }
 
-  async sendMessage(userId: string, content: string): Promise<AlterMessage> {
+  async sendMessage(userId: string, content: string): Promise<{ userMessage: AlterMessage; alterResponse: AlterMessage }> {
     // Sauvegarder le message utilisateur
     const userMessage = this.alterMessageRepository.create({
       userId,
@@ -188,7 +188,8 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
           },
         },
       });
-      return this.alterMessageRepository.save(postponeMessage);
+      const savedPostponeMessage = await this.alterMessageRepository.save(postponeMessage);
+      return { userMessage, alterResponse: savedPostponeMessage };
     }
 
     // ✅ OPTIMISATION : Récupérer les 30 derniers messages pour garder le contexte
@@ -248,7 +249,7 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
       structuredData: structuredData,
       profileState: profile_state || currentProfileState,
     });
-    await this.alterMessageRepository.save(assistantMessage);
+    const savedAssistantMessage = await this.alterMessageRepository.save(assistantMessage);
 
     // Synchroniser le profileState vers User pour le matching
     const finalProfileState = profile_state || currentProfileState;
@@ -267,7 +268,7 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
       }
     }
 
-    return assistantMessage;
+    return { userMessage, alterResponse: savedAssistantMessage };
   }
 
   /**

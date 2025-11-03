@@ -8,7 +8,6 @@ import { useBackButtonNavigation, useAlterMessages, useAddAlterMessageToCache, c
 import { useAuth } from '@/contexts/AuthContext'
 import { parseMarkdown } from '@/utils/markdown'
 import { formatMessageTime } from '@/utils/date'
-import { alterChatStorage } from '@/utils/alterChatStorage'
 import './AlterChat.css'
 
 export const AlterChat: React.FC = () => {
@@ -35,46 +34,24 @@ export const AlterChat: React.FC = () => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastScrollHeight = useRef<number>(0)
+  const hasScrolledToBottom = useRef(false)
 
   // Gérer le bouton retour - retourner à discover
   useBackButtonNavigation('/discover')
 
-  // Utiliser useRef pour stabiliser addMessageToCache et éviter les reconnexions WebSocket
-  const addMessageToCacheRef = useRef(addMessageToCache)
-
-  useEffect(() => {
-    addMessageToCacheRef.current = addMessageToCache
-  }, [addMessageToCache])
-
-  // Initialize WebSocket connection
+  // WebSocket: écouter les nouveaux messages
   useEffect(() => {
     if (!user?.id) return
 
     console.log('🟢 AlterChat: Registering message listener')
 
-    // Le WebSocket est déjà initialisé par WebSocketProvider
-    // On enregistre juste le listener pour les messages
     const handleAlterMessage = (message: ChatMessage) => {
-      // Si c'est un message utilisateur du serveur, supprimer les messages optimistes temporaires
-      if (message.role === 'user') {
-        queryClient.setQueryData<ChatMessage[]>(
-          chatKeys.alterMessages(),
-          (old = []) => {
-            // Filtrer les messages temporaires avec le même contenu
-            const filtered = old.filter(m =>
-              !(m.id.startsWith('temp-') && m.content === message.content && m.role === 'user')
-            )
-            // Ajouter le vrai message si pas déjà présent
-            const exists = filtered.some(m => m.id === message.id)
-            return exists ? filtered : [...filtered, message]
-          }
-        )
-      } else {
-        // Pour les messages assistant, ajouter normalement
-        addMessageToCacheRef.current(message)
-      }
+      console.log('📨 AlterChat: Message received', { id: message.id, role: message.role })
 
-      // Only stop loading indicator when Alter (assistant) responds
+      // Ajouter le message au cache (avec vérification de doublon dans le hook)
+      addMessageToCache(message)
+
+      // Arrêter le loading indicator quand Alter répond
       if (message.role === 'assistant') {
         setIsSending(false)
       }
@@ -82,14 +59,23 @@ export const AlterChat: React.FC = () => {
 
     chatService.onAlterMessage(handleAlterMessage)
 
-    // Note: React Query charge automatiquement l'historique via useAlterMessages()
+    // ⚠️ PAS de cleanup: le WebSocket reste connecté pour les autres pages
+  }, [user?.id, addMessageToCache])
 
-    // ⚠️ PAS de cleanup: le WebSocket Alter Chat reste connecté pour les autres pages
-    // Il sera déconnecté uniquement au logout
-  }, [user?.id, queryClient])
-
+  // Scroll initial au chargement de la page (instant, pas smooth)
   useEffect(() => {
-    if (messages.length > 0) {
+    if (!isLoading && messages.length > 0 && !hasScrolledToBottom.current) {
+      // Attendre que le DOM soit bien rendu
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+        hasScrolledToBottom.current = true
+      }, 100)
+    }
+  }, [isLoading, messages.length])
+
+  // Scroll smooth pour les nouveaux messages
+  useEffect(() => {
+    if (messages.length > 0 && hasScrolledToBottom.current) {
       scrollToBottom()
       // Update profile state from the latest assistant message
       const latestProfileState = [...messages]
@@ -99,10 +85,6 @@ export const AlterChat: React.FC = () => {
         setProfileState(latestProfileState)
       }
     }
-  }, [messages])
-
-  useEffect(() => {
-    scrollToBottom()
   }, [messages])
 
   useEffect(() => {
@@ -179,8 +161,12 @@ export const AlterChat: React.FC = () => {
       // Obtenir l'ID du message le plus ancien
       const oldestMessageId = messages.length > 0 ? messages[0].id : undefined
 
-      // Charger les messages plus anciens
+      console.log('📜 Loading more messages before:', oldestMessageId)
+
+      // Charger 30 messages plus anciens
       const olderMessages = await chatService.loadAlterHistory(30, oldestMessageId)
+
+      console.log('📜 Loaded', olderMessages.length, 'older messages')
 
       if (olderMessages.length === 0) {
         setHasMoreMessages(false)
@@ -192,14 +178,10 @@ export const AlterChat: React.FC = () => {
         }
 
         // Ajouter les anciens messages au début du cache React Query
-        const updatedMessages = [...olderMessages, ...messages]
         queryClient.setQueryData<ChatMessage[]>(
           chatKeys.alterMessages(),
-          updatedMessages
+          (old = []) => [...olderMessages, ...old]
         )
-
-        // Mettre à jour le secure storage avec tous les messages
-        await alterChatStorage.saveMessages(updatedMessages)
 
         // Restaurer la position du scroll après que les nouveaux messages soient rendus
         setTimeout(() => {
@@ -240,18 +222,7 @@ export const AlterChat: React.FC = () => {
     setInput('')
     setIsSending(true)
 
-    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
-    const optimisticUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}-${Math.random()}`,
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    }
-
-    // Ajouter au cache pour affichage instantané
-    addMessageToCache(optimisticUserMessage)
-
-    // Envoyer via WebSocket (le serveur renverra le vrai message avec l'ID définitif)
+    // Envoyer via WebSocket (le serveur renverra les messages via le listener)
     chatService.sendAlterMessage(content)
   }
 
@@ -310,18 +281,7 @@ export const AlterChat: React.FC = () => {
     })
     setIsSending(true)
 
-    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
-    const optimisticUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}-${Math.random()}`,
-      role: 'user',
-      content,
-      timestamp: new Date(),
-    }
-
-    // Ajouter au cache pour affichage instantané
-    addMessageToCache(optimisticUserMessage)
-
-    // Envoyer via WebSocket (userId extrait du JWT côté serveur)
+    // Envoyer via WebSocket
     chatService.sendAlterMessage(content)
   }
 
@@ -342,20 +302,9 @@ export const AlterChat: React.FC = () => {
     setShowIntentionMenu(false)
     setIsSending(true)
 
-    // 🚀 OPTIMISTIC UPDATE: Ajouter immédiatement le message de l'utilisateur au cache
     const intentionMessage = `Je souhaite maintenant explorer l'aspect ${getIntentionLabel(newIntention)} de mon profil.`
 
-    const optimisticUserMessage: ChatMessage = {
-      id: `temp-${Date.now()}-${Math.random()}`,
-      role: 'user',
-      content: intentionMessage,
-      timestamp: new Date(),
-    }
-
-    // Ajouter au cache pour affichage instantané
-    addMessageToCache(optimisticUserMessage)
-
-    // Envoyer au LLM (userId extrait du JWT côté serveur)
+    // Envoyer via WebSocket
     chatService.sendAlterMessage(intentionMessage)
   }
 

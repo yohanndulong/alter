@@ -90,17 +90,18 @@ export class AlterChatGateway implements OnGatewayConnection, OnGatewayDisconnec
 
     const { content } = payload;
 
-    // Envoie le message utilisateur immédiatement
+    // Générer la réponse d'Alter (sauvegarde aussi le message utilisateur en base)
+    const { userMessage, alterResponse } = await this.alterChatService.sendMessage(client.userId, content);
+
+    // Envoyer le message utilisateur (avec ID de la base de données)
     this.server.to(`alter-chat-${client.userId}`).emit('alter-message', {
+      id: userMessage.id,
       role: 'user',
-      content,
-      timestamp: new Date(),
+      content: userMessage.content,
+      timestamp: userMessage.createdAt,
     });
 
-    // Génère la réponse d'Alter avec l'userId du JWT
-    const alterResponse = await this.alterChatService.sendMessage(client.userId, content);
-
-    // Envoie la réponse d'Alter avec TOUS les champs nécessaires
+    // Envoyer la réponse d'Alter avec TOUS les champs nécessaires
     this.server.to(`alter-chat-${client.userId}`).emit('alter-message', {
       id: alterResponse.id,
       role: 'assistant',
