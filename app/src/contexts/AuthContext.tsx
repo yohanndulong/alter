@@ -3,6 +3,9 @@ import { User } from '@/types'
 import { api } from '@/services/api'
 import { notificationService } from '@/services/notifications'
 import { Capacitor } from '@capacitor/core'
+import { alterDB } from '@/utils/indexedDB'
+import { queryClient } from '@/lib/queryClient'
+import { chatService } from '@/services/chat'
 
 interface AuthContextType {
   user: User | null
@@ -99,14 +102,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   const logout = async () => {
-    // Désenregistrer les notifications push
+    console.log('🔴 Logout initiated - cleaning up all caches...')
+
+    // 1. Déconnecter le WebSocket
+    chatService.disconnectChat()
+
+    // 2. Nettoyer IndexedDB (matches, messages, metadata)
+    await alterDB.clearAll()
+
+    // 3. Nettoyer React Query cache
+    queryClient.clear()
+
+    // 4. Nettoyer localStorage (sauf préférences globales: theme et language)
+    const theme = localStorage.getItem('theme')
+    const language = localStorage.getItem('language')
+
+    localStorage.clear()
+
+    // Restaurer les préférences globales
+    if (theme) localStorage.setItem('theme', theme)
+    if (language) localStorage.setItem('language', language)
+
+    // 5. Désenregistrer les notifications push
     if (Capacitor.isNativePlatform()) {
       await notificationService.unregister()
     }
 
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('cached_user')
+    // 6. Réinitialiser l'état utilisateur
     setUser(null)
+
+    console.log('✅ Logout complete - all caches cleared')
   }
 
   const updateUser = (updates: Partial<User>) => {
