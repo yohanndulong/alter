@@ -9,6 +9,7 @@ import { EmbeddingsService } from '../embeddings/embeddings.service';
 @Injectable()
 export class AlterChatService {
   private readonly logger = new Logger(AlterChatService.name);
+  private gatewayInstance: any = null; // Injecté dynamiquement par le Gateway
 
   constructor(
     @InjectRepository(AlterMessage)
@@ -17,6 +18,14 @@ export class AlterChatService {
     private readonly usersService: UsersService,
     private readonly embeddingsService: EmbeddingsService,
   ) {}
+
+  /**
+   * Permet au Gateway de s'enregistrer auprès du Service
+   * Cela évite la dépendance circulaire
+   */
+  setGateway(gateway: any) {
+    this.gatewayInstance = gateway;
+  }
 
   async getMessages(userId: string): Promise<AlterMessage[]> {
     const messages = await this.alterMessageRepository.find({
@@ -268,6 +277,9 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
     try {
       const user = await this.usersService.findById(userId);
 
+      // Vérifier si c'est la première génération d'embedding
+      const isFirstEmbedding = !user.profileEmbedding;
+
       // Vérifier qu'il y a assez de données
       if (!user.alterSummary && !user.alterProfileAI && !user.bio) {
         this.logger.warn(`Cannot generate embedding for user ${userId}: profile too empty`);
@@ -283,10 +295,36 @@ Je serai là quand tu seras prêt(e) à discuter. Reviens me voir quand tu le so
         profileEmbeddingUpdatedAt: new Date(),
       });
 
-      this.logger.log(`✅ Profile embedding updated for user ${userId} (completion: ${user.alterProfileCompletion}%)`);
+      this.logger.log(`✅ Profile embedding updated for user ${userId} (completion: ${user.alterProfileCompletion}%, first: ${isFirstEmbedding})`);
+
+      // Si c'est la première génération d'embedding, émettre un événement
+      if (isFirstEmbedding) {
+        this.emitProfileEmbeddingGenerated(userId);
+      }
     } catch (error) {
       this.logger.error(`Failed to update embedding for user ${userId}:`, error.message);
       // Ne pas bloquer si l'embedding échoue
+    }
+  }
+
+  /**
+   * Émet un événement pour notifier que l'embedding du profil a été généré
+   */
+  private emitProfileEmbeddingGenerated(userId: string): void {
+    try {
+      // Récupérer le gateway via l'enregistrement dynamique
+      if (this.gatewayInstance?.server) {
+        this.logger.log(`📡 Emitting profile-embedding-generated event for user ${userId}`);
+        this.gatewayInstance.server
+          .to(`alter-chat-${userId}`)
+          .emit('profile-embedding-generated', {
+            userId,
+            timestamp: new Date(),
+          });
+      }
+    } catch (error) {
+      this.logger.error(`Failed to emit profile-embedding-generated event:`, error.message);
+      // Ne pas bloquer si l'émission échoue
     }
   }
 

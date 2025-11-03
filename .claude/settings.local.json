@@ -18,7 +18,8 @@
       "Bash(./gradlew.bat:*)",
       "Bash(npm run android:install:debug:*)",
       "Bash(npm install:*)",
-      "Bash(npx cap sync:*)"
+      "Bash(npx cap sync:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

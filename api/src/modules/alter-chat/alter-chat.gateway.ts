@@ -27,7 +27,10 @@ export class AlterChatGateway implements OnGatewayConnection, OnGatewayDisconnec
   constructor(
     private readonly alterChatService: AlterChatService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    // S'enregistrer auprès du service pour éviter la dépendance circulaire
+    this.alterChatService.setGateway(this);
+  }
 
   async handleConnection(client: AuthenticatedSocket) {
     try {

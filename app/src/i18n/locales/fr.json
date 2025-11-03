@@ -140,7 +140,22 @@
     "sendMessage": "Envoyer un message",
     "maxConversationsReachedTitle": "Vos conversations sont pleines !",
     "maxConversationsReachedMessage": "Vous avez {{max}} conversations en cours 💬 Pour découvrir de nouveaux profils, prenez le temps de faire le tri et concentrez-vous sur vos meilleurs échanges !",
-    "goToConversations": "Voir mes conversations"
+    "goToConversations": "Voir mes conversations",
+    "embeddingGeneratedTitle": "Votre profil est prêt !",
+    "embeddingGeneratedMessage": "Alter a terminé l'analyse de votre profil. Rechargez pour voir vos vrais scores de compatibilité.",
+    "reloadProfiles": "Recharger les profils",
+    "later": "Plus tard",
+    "profilesReloadedWithScores": "Profils rechargés avec vos scores de compatibilité !",
+    "loadingTitle1": "Analyse en cours...",
+    "loadingText1": "Nous explorons des milliers de profils pour vous",
+    "loadingTitle2": "Calcul des compatibilités...",
+    "loadingText2": "Notre IA analyse les personnalités et centres d'intérêt",
+    "loadingTitle3": "Recherche d'affinités...",
+    "loadingText3": "Nous identifions les profils qui vous correspondent le mieux",
+    "loadingTitle4": "Personnalisation des résultats...",
+    "loadingText4": "Chaque score est calculé spécialement pour vous",
+    "loadingTitle5": "Finalisation...",
+    "loadingText5": "Préparation de vos meilleurs matchs possibles"
   },
   "matches": {
     "title": "Mes discussions",

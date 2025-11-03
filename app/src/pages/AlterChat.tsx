@@ -39,15 +39,22 @@ export const AlterChat: React.FC = () => {
   // Gérer le bouton retour - retourner à discover
   useBackButtonNavigation('/discover')
 
+  // Utiliser useRef pour stabiliser addMessageToCache et éviter les reconnexions WebSocket
+  const addMessageToCacheRef = useRef(addMessageToCache)
+
+  useEffect(() => {
+    addMessageToCacheRef.current = addMessageToCache
+  }, [addMessageToCache])
+
   // Initialize WebSocket connection
   useEffect(() => {
     if (!user?.id) return
 
-    // Initialize Alter Chat WebSocket (userId extrait du JWT côté serveur)
-    chatService.initAlterChatSocket()
+    console.log('🟢 AlterChat: Registering message listener')
 
-    // Listen for incoming Alter messages
-    chatService.onAlterMessage((message: ChatMessage) => {
+    // Le WebSocket est déjà initialisé par WebSocketProvider
+    // On enregistre juste le listener pour les messages
+    const handleAlterMessage = (message: ChatMessage) => {
       // Si c'est un message utilisateur du serveur, supprimer les messages optimistes temporaires
       if (message.role === 'user') {
         queryClient.setQueryData<ChatMessage[]>(
@@ -64,22 +71,22 @@ export const AlterChat: React.FC = () => {
         )
       } else {
         // Pour les messages assistant, ajouter normalement
-        addMessageToCache(message)
+        addMessageToCacheRef.current(message)
       }
 
       // Only stop loading indicator when Alter (assistant) responds
       if (message.role === 'assistant') {
         setIsSending(false)
       }
-    })
+    }
+
+    chatService.onAlterMessage(handleAlterMessage)
 
     // Note: React Query charge automatiquement l'historique via useAlterMessages()
 
-    // Cleanup on unmount
-    return () => {
-      chatService.disconnectAlterChat()
-    }
-  }, [user?.id, addMessageToCache])
+    // ⚠️ PAS de cleanup: le WebSocket Alter Chat reste connecté pour les autres pages
+    // Il sera déconnecté uniquement au logout
+  }, [user?.id, queryClient])
 
   useEffect(() => {
     if (messages.length > 0) {

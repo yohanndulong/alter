@@ -82,8 +82,8 @@ export function useAlterMessages() {
   const query = useQuery({
     queryKey: chatKeys.alterMessages(),
     queryFn: async () => {
-      // Charger depuis le serveur via WebSocket
-      chatService.initAlterChatSocket()
+      // Le WebSocket est initialisé par la page AlterChat ou Discover
+      // On ne l'initialise PAS ici pour éviter les connexions multiples
       const serverMessages = await chatService.loadAlterHistory(50)
 
       // Sauvegarder dans le cache persistant

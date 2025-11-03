@@ -44,6 +44,26 @@
   }
 }
 
+.discover-loading-message {
+  animation: messageSlide 0.5s ease-out;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  justify-content: center;
+}
+
+@keyframes messageSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .discover-loading-title {
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
@@ -76,6 +96,25 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.discover-loading-dots {
+  display: flex;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.discover-loading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--color-border);
+  transition: all 0.3s ease;
+}
+
+.discover-loading-dot.active {
+  background-color: var(--color-primary-500);
+  transform: scale(1.3);
 }
 
 .discover-header {
@@ -832,4 +871,90 @@
     opacity: 0;
     transform: translateY(-150px) scale(0.8) rotate(-20deg);
   }
+}
+
+/* Bannière d'embedding généré */
+.discover-embedding-generated-banner {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-4);
+  margin: var(--spacing-4) 0;
+  animation: slideDown 0.4s ease-out;
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.discover-embedding-banner-content {
+  display: flex;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-3);
+}
+
+.discover-embedding-banner-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.discover-embedding-banner-text {
+  flex: 1;
+}
+
+.discover-embedding-banner-title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  margin: 0 0 var(--spacing-1) 0;
+}
+
+.discover-embedding-banner-message {
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.discover-embedding-banner-actions {
+  display: flex;
+  gap: var(--spacing-2);
+  justify-content: flex-end;
+}
+
+.discover-embedding-banner-button {
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.discover-embedding-banner-button--secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.discover-embedding-banner-button--secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.discover-embedding-banner-button--primary {
+  background: white;
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+}
+
+.discover-embedding-banner-button--primary:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

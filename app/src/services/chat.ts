@@ -253,6 +253,18 @@ export const chatService = {
     }
   },
 
+  onAlterChatEvent(eventName: string, callback: (...args: any[]) => void) {
+    if (alterChatSocket) {
+      alterChatSocket.on(eventName, callback)
+    }
+  },
+
+  offAlterChatEvent(eventName: string, callback: (...args: any[]) => void) {
+    if (alterChatSocket) {
+      alterChatSocket.off(eventName, callback)
+    }
+  },
+
   disconnectAlterChat() {
     if (alterChatSocket) {
       alterChatSocket.disconnect()

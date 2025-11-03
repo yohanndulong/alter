@@ -44,10 +44,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
   useEffect(() => {
     if (!user?.id || isConnectedRef.current) return
 
-    console.log('🔌 Initializing global WebSocket connection...')
+    console.log('🔌 Initializing global WebSocket connections...')
 
-    // Initialiser le WebSocket
+    // Initialiser les WebSockets (Chat et Alter Chat)
     chatService.initChatSocket()
+    chatService.initAlterChatSocket()
     isConnectedRef.current = true
 
     // ========================================
@@ -171,13 +172,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
     console.log('✅ Global WebSocket connection established')
 
-    // Cleanup : NE PAS déconnecter le socket !
-    // On garde la connexion active pendant toute la session
+    // Cleanup : NE PAS déconnecter les sockets !
+    // On garde les connexions actives pendant toute la session
     return () => {
       console.log('⚠️ WebSocketProvider unmounting (logout)')
       // Ne déconnecter que si l'utilisateur se déconnecte
       if (!user) {
         chatService.disconnectChat()
+        chatService.disconnectAlterChat()
         isConnectedRef.current = false
       }
     }

@@ -6,6 +6,7 @@ import { User, Match, DiscoverViewMode, RelationshipFilter } from '@/types'
 import { useToast, useDiscoverProfiles, useConversationsStatus, useInterestedProfiles } from '@/hooks'
 import { api } from '@/services/api'
 import { matchingService } from '@/services/matching'
+import { chatService } from '@/services/chat'
 import { useAuth } from '@/contexts/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
 import { matchingKeys } from '@/hooks/useMatching'
@@ -48,6 +49,8 @@ export const Discover: React.FC = () => {
     minCompatibility: user?.preferenceMinCompatibility || 50
   })
   const [likingUserId, setLikingUserId] = useState<string | null>(null)
+  const [showEmbeddingGeneratedBanner, setShowEmbeddingGeneratedBanner] = useState(false)
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
 
   // React Query - Charger les profils avec cache automatique
   const { data: discoverData, isLoading } = useDiscoverProfiles()
@@ -64,6 +67,41 @@ export const Discover: React.FC = () => {
   useEffect(() => {
     loadMaxDistance()
   }, [])
+
+  // Animer les messages de chargement
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingMessageIndex(0)
+      return
+    }
+
+    // Changer de message toutes les 3 secondes
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % 5) // 5 messages au total
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [isLoading])
+
+  // Écouter l'événement d'embedding généré depuis Alter Chat
+  useEffect(() => {
+    if (!user?.id) return
+
+    // Le WebSocket Alter Chat est déjà initialisé par WebSocketProvider
+    // On enregistre juste le listener pour l'événement
+    const handleEmbeddingGenerated = () => {
+      console.log('📡 Discover: Profile embedding generated, showing reload banner...')
+      // Afficher la bannière proposant de recharger
+      setShowEmbeddingGeneratedBanner(true)
+    }
+
+    chatService.onAlterChatEvent('profile-embedding-generated', handleEmbeddingGenerated)
+
+    // Cleanup
+    return () => {
+      chatService.offAlterChatEvent('profile-embedding-generated', handleEmbeddingGenerated)
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (user) {
@@ -283,19 +321,49 @@ export const Discover: React.FC = () => {
     }
   }
 
+  const handleReloadProfilesWithEmbedding = () => {
+    console.log('🔄 Reloading profiles with embedding scores...')
+    // Invalider le cache pour forcer un rechargement
+    queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
+    // Mettre à jour le user context pour refléter que l'embedding existe
+    updateUser({ profileEmbedding: true } as any)
+    // Masquer la bannière
+    setShowEmbeddingGeneratedBanner(false)
+    // Afficher un message de succès
+    success(t('discover.profilesReloadedWithScores'))
+  }
+
   if (isLoading) {
+    const loadingMessages = [
+      { title: t('discover.loadingTitle1'), text: t('discover.loadingText1') },
+      { title: t('discover.loadingTitle2'), text: t('discover.loadingText2') },
+      { title: t('discover.loadingTitle3'), text: t('discover.loadingText3') },
+      { title: t('discover.loadingTitle4'), text: t('discover.loadingText4') },
+      { title: t('discover.loadingTitle5'), text: t('discover.loadingText5') },
+    ]
+
+    const currentMessage = loadingMessages[loadingMessageIndex]
+
     return (
       <div className="discover-container">
         <div className="discover-loading">
           <div className="discover-loading-icon">
             <Logo variant="icon" size={48} />
           </div>
-          <h2 className="discover-loading-title">Recherche en cours...</h2>
-          <p className="discover-loading-text">
-            Nous analysons les profils les plus compatibles avec vous
-          </p>
+          <div className="discover-loading-message" key={loadingMessageIndex}>
+            <h2 className="discover-loading-title">{currentMessage.title}</h2>
+            <p className="discover-loading-text">{currentMessage.text}</p>
+          </div>
           <div className="discover-loading-spinner">
             <div className="spinner"></div>
+          </div>
+          <div className="discover-loading-dots">
+            {loadingMessages.map((_, index) => (
+              <span
+                key={index}
+                className={`discover-loading-dot ${index === loadingMessageIndex ? 'active' : ''}`}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -363,6 +431,36 @@ export const Discover: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {showEmbeddingGeneratedBanner && (
+        <div className="discover-embedding-generated-banner">
+          <div className="discover-embedding-banner-content">
+            <div className="discover-embedding-banner-icon">✨</div>
+            <div className="discover-embedding-banner-text">
+              <h3 className="discover-embedding-banner-title">
+                {t('discover.embeddingGeneratedTitle')}
+              </h3>
+              <p className="discover-embedding-banner-message">
+                {t('discover.embeddingGeneratedMessage')}
+              </p>
+            </div>
+          </div>
+          <div className="discover-embedding-banner-actions">
+            <button
+              className="discover-embedding-banner-button discover-embedding-banner-button--secondary"
+              onClick={() => setShowEmbeddingGeneratedBanner(false)}
+            >
+              {t('discover.later')}
+            </button>
+            <button
+              className="discover-embedding-banner-button discover-embedding-banner-button--primary"
+              onClick={handleReloadProfilesWithEmbedding}
+            >
+              {t('discover.reloadProfiles')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="discover-content">
         {conversationsStatus && !conversationsStatus.canLike && (
