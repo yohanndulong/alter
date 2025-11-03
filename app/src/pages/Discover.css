@@ -124,8 +124,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--spacing-4);
-  padding: 0 0 var(--spacing-4) 0;
+  gap: var(--spacing-3);
+  padding: var(--spacing-5) var(--spacing-5) var(--spacing-5) var(--spacing-5);
+  margin: 0 calc(-1 * var(--spacing-4));
   background: var(--color-background);
   flex-shrink: 0;
 }
@@ -133,7 +134,9 @@
 .discover-header-info {
   display: flex;
   align-items: center;
-  gap: var(--spacing-3);
+  gap: var(--spacing-2);
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .discover-avatar {
@@ -154,6 +157,7 @@
   gap: var(--spacing-2);
   align-items: center;
   flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .discover-view-toggle {
@@ -349,11 +353,13 @@
 }
 
 .discover-title {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   margin: 0;
-  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .discover-card-container {
@@ -653,7 +659,7 @@
   }
 
   .discover-header {
-    padding: var(--spacing-3) 0;
+   padding: var(--spacing-4) var(--spacing-8) var(--spacing-1) var(--spacing-8)
   }
 
   .discover-avatar {
@@ -957,4 +963,48 @@
 .discover-embedding-banner-button--primary:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Pull-to-refresh indicator */
+.discover-refresh-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.discover-refresh-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.discover-refresh-indicator span {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
 }

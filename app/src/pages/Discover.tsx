@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ProfileCard, Modal, Button, CompatibilityListItem, CompatibilityFilter, ProfileModal, ConfirmDialog, Logo } from '@/components'
@@ -51,6 +51,7 @@ export const Discover: React.FC = () => {
   const [likingUserId, setLikingUserId] = useState<string | null>(null)
   const [showEmbeddingGeneratedBanner, setShowEmbeddingGeneratedBanner] = useState(false)
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // React Query - Charger les profils avec cache automatique
   const { data: discoverData, isLoading } = useDiscoverProfiles()
@@ -75,10 +76,16 @@ export const Discover: React.FC = () => {
       return
     }
 
-    // Changer de message toutes les 3 secondes
+    // Changer de message toutes les 5 secondes, sans boucler
     const interval = setInterval(() => {
-      setLoadingMessageIndex((prev) => (prev + 1) % 5) // 5 messages au total
-    }, 3000)
+      setLoadingMessageIndex((prev) => {
+        // S'arrêter au dernier message (index 4, car il y a 5 messages de 0 à 4)
+        if (prev >= 4) {
+          return 4 // Rester sur le dernier message
+        }
+        return prev + 1
+      })
+    }, 5000) // 5 secondes au lieu de 3
 
     return () => clearInterval(interval)
   }, [isLoading])
@@ -90,9 +97,21 @@ export const Discover: React.FC = () => {
     // Le WebSocket Alter Chat est déjà initialisé par WebSocketProvider
     // On enregistre juste le listener pour l'événement
     const handleEmbeddingGenerated = () => {
-      console.log('📡 Discover: Profile embedding generated, showing reload banner...')
-      // Afficher la bannière proposant de recharger
+      console.log('📡 Discover: Profile embedding generated, reloading profiles...')
+
+      // Invalider le cache des profils discover pour forcer un reload
+      queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
+
+      // Afficher un toast pour informer l'utilisateur
+      success(t('discover.profilesUpdated'))
+
+      // Afficher la bannière (optionnel)
       setShowEmbeddingGeneratedBanner(true)
+
+      // Cacher la bannière après 5 secondes
+      setTimeout(() => {
+        setShowEmbeddingGeneratedBanner(false)
+      }, 5000)
     }
 
     chatService.onAlterChatEvent('profile-embedding-generated', handleEmbeddingGenerated)
@@ -101,7 +120,7 @@ export const Discover: React.FC = () => {
     return () => {
       chatService.offAlterChatEvent('profile-embedding-generated', handleEmbeddingGenerated)
     }
-  }, [user?.id])
+  }, [user?.id, queryClient, success, t])
 
   useEffect(() => {
     if (user) {
@@ -127,28 +146,40 @@ export const Discover: React.FC = () => {
     }
   }
 
+  // Fonction de rafraîchissement
+  const handleRefresh = async () => {
+    if (isRefreshing) return
+
+    setIsRefreshing(true)
+    console.log('🔄 Pull-to-refresh: Reloading profiles...')
+
+    try {
+      // Invalider le cache pour forcer un rechargement
+      await queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
+      success(t('discover.profilesReloadedWithScores'))
+    } catch (err) {
+      console.error('Failed to refresh profiles:', err)
+      showError(t('common.error'))
+    } finally {
+      setTimeout(() => {
+        setIsRefreshing(false)
+      }, 500)
+    }
+  }
+
+
   // Fonction helper pour recharger les profils
   const reloadProfiles = () => {
     queryClient.invalidateQueries({ queryKey: matchingKeys.discover() })
   }
 
-  const getFilteredProfiles = () => {
-    let filtered = profiles
+  const filteredProfiles = useMemo(() => {
+    let filtered = [...profiles]
 
     // Ne pas appliquer les filtres de compatibilité si l'utilisateur n'a pas d'embedding
     // Dans ce cas, on affiche les profils avec informations masquées pour l'inviter à compléter son profil
     if (!hasProfileEmbedding) {
       return filtered
-    }
-
-    // Filter by relationship type
-    if (relationshipFilter !== 'all') {
-      filtered = filtered.filter(profile => {
-        const score = relationshipFilter === 'love' ? profile.compatibilityScoreLove
-          : relationshipFilter === 'friendship' ? profile.compatibilityScoreFriendship
-          : profile.compatibilityScoreCarnal
-        return score && score >= 70
-      })
     }
 
     // Filter by minimum compatibility
@@ -158,10 +189,37 @@ export const Discover: React.FC = () => {
       )
     }
 
-    return filtered
-  }
+    // Sort by relationship type
+    filtered.sort((a, b) => {
+      let scoreA: number | undefined
+      let scoreB: number | undefined
 
-  const filteredProfiles = getFilteredProfiles()
+      switch (relationshipFilter) {
+        case 'love':
+          scoreA = a.compatibilityScoreLove
+          scoreB = b.compatibilityScoreLove
+          break
+        case 'friendship':
+          scoreA = a.compatibilityScoreFriendship
+          scoreB = b.compatibilityScoreFriendship
+          break
+        case 'carnal':
+          scoreA = a.compatibilityScoreCarnal
+          scoreB = b.compatibilityScoreCarnal
+          break
+        case 'all':
+        default:
+          scoreA = a.compatibilityScoreGlobal
+          scoreB = b.compatibilityScoreGlobal
+          break
+      }
+
+      // Tri décroissant (scores les plus élevés en premier)
+      return (scoreB || 0) - (scoreA || 0)
+    })
+
+    return filtered
+  }, [profiles, hasProfileEmbedding, relationshipFilter, filters.minCompatibility])
   const currentProfile = filteredProfiles[currentIndex]
 
   const handleLike = async (userId?: string) => {
@@ -400,6 +458,28 @@ export const Discover: React.FC = () => {
               </svg>
             </button>
           </div>
+          <button
+            className="discover-header-icon-button"
+            title={t('common.refresh')}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            style={{ opacity: isRefreshing ? 0.5 : 1 }}
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{
+                animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                transformOrigin: 'center'
+              }}
+            >
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+
           {viewMode === 'list' && (
             <CompatibilityFilter
               value={relationshipFilter}
@@ -407,7 +487,7 @@ export const Discover: React.FC = () => {
               compact
             />
           )}
-          
+
           <button
             className="discover-header-icon-button"
             title={t('common.filters')}
@@ -431,6 +511,14 @@ export const Discover: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Indicateur de rafraîchissement */}
+      {isRefreshing && (
+        <div className="discover-refresh-indicator">
+          <div className="discover-refresh-spinner"></div>
+          <span>{t('common.loading')}</span>
+        </div>
+      )}
 
       {showEmbeddingGeneratedBanner && (
         <div className="discover-embedding-generated-banner">

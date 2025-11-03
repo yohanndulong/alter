@@ -48,8 +48,22 @@ export const AlterChat: React.FC = () => {
     const handleAlterMessage = (message: ChatMessage) => {
       console.log('📨 AlterChat: Message received', { id: message.id, role: message.role })
 
-      // Ajouter le message au cache (avec vérification de doublon dans le hook)
-      addMessageToCache(message)
+      // Si c'est un message utilisateur du serveur, remplacer le message temporaire
+      if (message.role === 'user') {
+        queryClient.setQueryData<ChatMessage[]>(
+          chatKeys.alterMessages(),
+          (old = []) => {
+            // Retirer tous les messages temporaires (temp-*)
+            const withoutTemp = old.filter(m => !m.id.startsWith('temp-'))
+            // Ajouter le vrai message s'il n'existe pas déjà
+            const exists = withoutTemp.some(m => m.id === message.id)
+            return exists ? withoutTemp : [...withoutTemp, message]
+          }
+        )
+      } else {
+        // Pour les messages assistant, ajouter normalement
+        addMessageToCache(message)
+      }
 
       // Arrêter le loading indicator quand Alter répond
       if (message.role === 'assistant') {
@@ -60,7 +74,21 @@ export const AlterChat: React.FC = () => {
     chatService.onAlterMessage(handleAlterMessage)
 
     // ⚠️ PAS de cleanup: le WebSocket reste connecté pour les autres pages
-  }, [user?.id, addMessageToCache])
+  }, [user?.id, addMessageToCache, queryClient])
+
+  // Initialiser le profileState au chargement des messages
+  useEffect(() => {
+    if (!isLoading && messages.length > 0 && !profileState) {
+      // Chercher le dernier message assistant avec un profileState
+      const latestProfileState = [...messages]
+        .reverse()
+        .find(m => m.role === 'assistant' && m.profileState)?.profileState
+      if (latestProfileState) {
+        console.log('📊 Initializing profileState:', latestProfileState)
+        setProfileState(latestProfileState)
+      }
+    }
+  }, [isLoading, messages, profileState])
 
   // Scroll initial au chargement de la page (instant, pas smooth)
   useEffect(() => {
@@ -86,6 +114,13 @@ export const AlterChat: React.FC = () => {
       }
     }
   }, [messages])
+
+  // Scroll automatiquement quand Alter commence à réfléchir
+  useEffect(() => {
+    if (isSending && hasScrolledToBottom.current) {
+      scrollToBottom()
+    }
+  }, [isSending])
 
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -222,7 +257,17 @@ export const AlterChat: React.FC = () => {
     setInput('')
     setIsSending(true)
 
-    // Envoyer via WebSocket (le serveur renverra les messages via le listener)
+    // 🚀 OPTIMISTIC UPDATE: Afficher le message utilisateur immédiatement
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    }
+    addMessageToCache(optimisticMessage)
+
+    // Envoyer via WebSocket (le serveur renverra le vrai message)
     chatService.sendAlterMessage(content)
   }
 
@@ -281,6 +326,16 @@ export const AlterChat: React.FC = () => {
     })
     setIsSending(true)
 
+    // 🚀 OPTIMISTIC UPDATE: Afficher le message utilisateur immédiatement
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+    }
+    addMessageToCache(optimisticMessage)
+
     // Envoyer via WebSocket
     chatService.sendAlterMessage(content)
   }
@@ -303,6 +358,16 @@ export const AlterChat: React.FC = () => {
     setIsSending(true)
 
     const intentionMessage = `Je souhaite maintenant explorer l'aspect ${getIntentionLabel(newIntention)} de mon profil.`
+
+    // 🚀 OPTIMISTIC UPDATE: Afficher le message utilisateur immédiatement
+    const tempId = `temp-${Date.now()}`
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      role: 'user',
+      content: intentionMessage,
+      timestamp: new Date(),
+    }
+    addMessageToCache(optimisticMessage)
 
     // Envoyer via WebSocket
     chatService.sendAlterMessage(intentionMessage)
