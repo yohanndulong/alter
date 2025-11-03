@@ -97,6 +97,12 @@ export const Discover: React.FC = () => {
   const getFilteredProfiles = () => {
     let filtered = profiles
 
+    // Ne pas appliquer les filtres de compatibilité si l'utilisateur n'a pas d'embedding
+    // Dans ce cas, on affiche les profils avec informations masquées pour l'inviter à compléter son profil
+    if (!hasProfileEmbedding) {
+      return filtered
+    }
+
     // Filter by relationship type
     if (relationshipFilter !== 'all') {
       filtered = filtered.filter(profile => {
