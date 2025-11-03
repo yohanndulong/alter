@@ -279,6 +279,29 @@ export class ChatController {
   }
 
   /**
+   * Génère des suggestions de sujets de conversation
+   */
+  @Get(':matchId/suggestions')
+  async getConversationSuggestions(
+    @CurrentUser() user: User,
+    @Param('matchId') matchId: string,
+  ) {
+    // Vérifier que le match existe et appartient à l'utilisateur
+    const match = await this.matchRepository.findOne({
+      where: [
+        { id: matchId, userId: user.id, isActive: true },
+        { id: matchId, matchedUserId: user.id, isActive: true },
+      ],
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+
+    return this.chatService.generateConversationSuggestions(matchId, user.id);
+  }
+
+  /**
    * Marquer une photo comme vue
    */
   @Post(':matchId/media/:mediaId/view')

@@ -7,12 +7,12 @@ import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message, Match, PhotoViewMode } from '@/types'
 import { useToast, usePrivacyScreen, useBackButtonNavigation, useMessages, useAddMessageToCache, chatKeys } from '@/hooks'
+import { userChatStorage } from '@/utils/userChatStorage'
 import { formatTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUnreadCountContext } from '@/contexts/UnreadCountContext'
 import { CapturedPhoto } from '@/services/camera'
-import { userChatStorage } from '@/utils/userChatStorage'
 import './Chat.css'
 
 export const Chat: React.FC = () => {
@@ -31,7 +31,6 @@ export const Chat: React.FC = () => {
   const queryClient = useQueryClient()
   const { data: messages = [], isLoading } = useMessages(matchId)
   const addMessageToCache = useAddMessageToCache()
-  const [isSending, setIsSending] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showQualityModal, setShowQualityModal] = useState(false)
   const [qualityDetails, setQualityDetails] = useState<any>(null)
@@ -65,81 +64,96 @@ export const Chat: React.FC = () => {
 
     loadMatch()
 
-    // Initialiser le WebSocket et rejoindre la room du match
-    const socket = chatService.initChatSocket()
+    // Rejoindre la room du match spécifique
+    // Note: le WebSocket est déjà initialisé globalement par WebSocketContext
     chatService.joinMatch(matchId)
 
-    // Fonction handler pour les nouveaux messages
-    const handleMessage = (message: Message) => {
-      console.log('📨 New message received:', message)
-
-      // Ajouter le message au cache React Query au lieu du state
-      addMessageToCache(matchId, message)
-
-      // Envoyer la confirmation de livraison
-      if (message.senderId !== user.id) {
-        chatService.sendMessageDelivered(matchId, message.id)
-      }
-    }
-
-    // Fonction handler pour l'indicateur de frappe
+    // Fonction handler UNIQUEMENT pour les indicateurs visuels locaux (typing, delivered, read)
+    // Les messages sont gérés par WebSocketContext qui met à jour IndexedDB + React Query
     const handleTyping = (data: { userId: string; isTyping: boolean }) => {
-      console.log('⌨️ Typing event:', data)
       if (data.userId !== user.id) {
         setIsOtherUserTyping(data.isTyping)
       }
     }
 
-    // Fonction handler pour le rejet de média
-    const handleMediaRejected = (data: { mediaId: string; matchId: string; rejectedBy: string }) => {
-      console.log('❌ Media rejected event:', data)
-      // TODO: Mettre à jour le cache React Query pour le média rejeté
-      // Pour l'instant on laisse, le refresh se fera automatiquement
-    }
-
-    // Fonction handler pour les messages livrés
     const handleMessageDelivered = (data: { messageId: string; deliveredTo: string }) => {
-      console.log('✓ Message delivered:', data)
       setDeliveredMessages(prev => new Set([...prev, data.messageId]))
     }
 
-    // Fonction handler pour les messages lus
     const handleMessageRead = (data: { matchId: string; readBy: string }) => {
-      console.log('✓✓ Messages read:', data)
-      setReadMessages(prev => {
-        const newSet = new Set(prev)
-        messages.forEach(msg => {
-          if (msg.senderId === user.id) {
-            newSet.add(msg.id)
-          }
+      if (data.matchId === matchId) {
+        setReadMessages(prev => {
+          const newSet = new Set(prev)
+          messages.forEach(msg => {
+            if (msg.senderId === user.id) {
+              newSet.add(msg.id)
+            }
+          })
+          return newSet
         })
-        return newSet
-      })
+      }
     }
 
-    // Enregistrer les listeners
-    chatService.onMessage(handleMessage)
+    // Enregistrer les listeners pour les indicateurs visuels uniquement
     chatService.onTyping(handleTyping)
-    chatService.onMediaRejected(handleMediaRejected)
     chatService.onMessageDelivered(handleMessageDelivered)
     chatService.onMessageRead(handleMessageRead)
 
-    // Cleanup : retirer les listeners spécifiques
+    // Cleanup : retirer les listeners (mais NE PAS déconnecter le socket global)
     return () => {
+      const socket = chatService.initChatSocket()
       if (socket) {
-        socket.off('message', handleMessage)
         socket.off('user-typing', handleTyping)
-        socket.off('media:rejected', handleMediaRejected)
         socket.off('message:delivered', handleMessageDelivered)
         socket.off('message:read', handleMessageRead)
       }
-      chatService.disconnectChat()
+      // NE PAS déconnecter le socket, il reste actif globalement
     }
-  }, [matchId, user?.id])
+  }, [matchId, user?.id, messages])
+
+  // Scroll vers le premier message non lu au chargement initial
+  const hasScrolledToUnread = useRef(false)
 
   useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    if (!messages || messages.length === 0 || !user || !match || hasScrolledToUnread.current) {
+      return
+    }
+
+    // Utiliser unreadCount du match (avant qu'il soit marqué comme lu)
+    const hasUnreadMessages = match.unreadCount > 0
+
+    if (hasUnreadMessages) {
+      // Il y a des messages non lus, trouver le premier
+      const firstUnreadIndex = messages.findIndex(
+        msg => msg.senderId !== user.id && !msg.read
+      )
+
+      if (firstUnreadIndex !== -1 && firstUnreadIndex > 0) {
+        // Scroller vers le premier message non lu
+        setTimeout(() => {
+          const messageElements = document.querySelectorAll('.chat-message')
+          const firstUnreadElement = messageElements[firstUnreadIndex] as HTMLElement
+          if (firstUnreadElement) {
+            firstUnreadElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            hasScrolledToUnread.current = true
+          }
+        }, 100)
+      } else {
+        // Fallback: scroller vers le bas
+        setTimeout(() => scrollToBottom(), 100)
+        hasScrolledToUnread.current = true
+      }
+    } else {
+      // Tout est déjà lu, scroller vers le bas
+      setTimeout(() => scrollToBottom(), 100)
+      hasScrolledToUnread.current = true
+    }
+  }, [messages, user, match])
+
+  // Réinitialiser le flag quand on change de conversation
+  useEffect(() => {
+    hasScrolledToUnread.current = false
+  }, [matchId])
 
   useEffect(() => {
     const container = messagesContainerRef.current
@@ -304,11 +318,26 @@ export const Chat: React.FC = () => {
   }, [input, matchId])
 
   const handleSend = () => {
-    if (!input.trim() || !matchId || isSending || !match || !user) return
+    if (!input.trim() || !matchId || !match || !user) return
 
     const messageContent = input.trim()
     setInput('')
-    setIsSending(true)
+
+    // Créer un message optimiste avec un ID temporaire
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      content: messageContent,
+      senderId: user.id,
+      receiverId: match.matchedUserId,
+      matchId,
+      type: 'text',
+      createdAt: new Date(),
+      delivered: false,
+      read: false,
+    }
+
+    // Ajouter immédiatement au cache pour affichage instantané
+    addMessageToCache(matchId, optimisticMessage)
 
     // Envoyer le message via WebSocket (userId extrait du JWT côté serveur)
     chatService.sendMessageWS(
@@ -317,7 +346,7 @@ export const Chat: React.FC = () => {
       messageContent
     )
 
-    setIsSending(false)
+    // Le message sera remplacé par le vrai message quand il arrivera via WebSocket
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -691,15 +720,14 @@ export const Chat: React.FC = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            disabled={isSending}
             rows={1}
           />
           <button
             className="chat-send-button"
             onClick={handleSend}
-            disabled={!input.trim() || isSending}
+            disabled={!input.trim()}
           >
-            {isSending ? '⋯' : '➤'}
+            ➤
           </button>
         </div>
       </div>

@@ -57,6 +57,7 @@
     "express": "^4.21.2",
     "framer-motion": "^11.0.0",
     "i18next": "^23.8.0",
+    "idb": "^8.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^14.0.0",

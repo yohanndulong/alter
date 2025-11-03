@@ -194,6 +194,7 @@
 }
 
 .matches-conversation {
+  position: relative;
   display: flex;
   gap: var(--spacing-3);
   padding: var(--spacing-4);
@@ -205,14 +206,58 @@
   border: 1px solid var(--color-border);
 }
 
+.matches-conversation--new {
+  border-color: rgba(255, 215, 0, 0.3);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(255, 165, 0, 0.03));
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.1), 0 2px 8px rgba(255, 215, 0, 0.1);
+}
+
 .matches-conversation:hover {
   background: var(--color-surface-hover);
   transform: translateX(4px);
   box-shadow: var(--shadow-md);
 }
 
+.matches-conversation--new:hover {
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.2), 0 4px 12px rgba(255, 215, 0, 0.15), var(--shadow-md);
+}
+
 .matches-conversation:active {
   transform: translateX(2px);
+}
+
+.matches-conversation-new-badge {
+  position: absolute;
+  top: var(--spacing-2);
+  right: var(--spacing-2);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-1);
+  padding: var(--spacing-1) var(--spacing-2);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.95), rgba(255, 165, 0, 0.95));
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  z-index: 1;
+  animation: newMatchPulse 2s ease-in-out infinite;
+}
+
+.matches-conversation-new-text {
+  line-height: 1;
+}
+
+@keyframes newMatchPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 6px rgba(255, 215, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 3px 10px rgba(255, 215, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+  }
 }
 
 .matches-conversation-avatar {

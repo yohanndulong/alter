@@ -261,4 +261,103 @@ export class ChatService {
       };
     }
   }
+
+  /**
+   * Génère des suggestions de sujets de conversation basées sur les intérêts communs
+   */
+  async generateConversationSuggestions(matchId: string, userId: string): Promise<any> {
+    try {
+      // Récupérer le match
+      const match = await this.matchRepository.findOne({
+        where: { id: matchId },
+        relations: ['user', 'matchedUser'],
+      });
+
+      if (!match) {
+        throw new Error('Match not found');
+      }
+
+      // Identifier l'utilisateur actuel et l'utilisateur matché
+      const currentUser = match.user.id === userId ? match.user : match.matchedUser;
+      const otherUser = match.user.id === userId ? match.matchedUser : match.user;
+
+      // Trouver les intérêts communs
+      const currentUserInterests = currentUser.interests || [];
+      const otherUserInterests = otherUser.interests || [];
+      const commonInterests = currentUserInterests.filter(interest =>
+        otherUserInterests.includes(interest)
+      );
+
+      // Récupérer les derniers messages pour comprendre le contexte
+      const recentMessages = await this.messageRepository.find({
+        where: { matchId },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      });
+
+      const hasMessages = recentMessages.length > 0;
+      const lastMessageTime = hasMessages ? recentMessages[0].createdAt : null;
+      const daysSinceLastMessage = lastMessageTime
+        ? Math.floor((Date.now() - new Date(lastMessageTime).getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      // Construire le prompt pour l'IA
+      const prompt = `Tu es un expert en communication et relations. Génère 3 suggestions de sujets de conversation pour relancer ou enrichir une discussion.
+
+Contexte:
+- Utilisateur 1 (${currentUser.name}): ${currentUser.alterSummary || 'Profil en construction'}
+- Utilisateur 2 (${otherUser.name}): ${otherUser.alterSummary || 'Profil en construction'}
+- Intérêts communs: ${commonInterests.join(', ') || 'Aucun intérêt commun identifié'}
+${hasMessages ? `- Nombre de messages échangés: ${recentMessages.length}` : '- Aucun message échangé'}
+${daysSinceLastMessage !== null ? `- Jours depuis le dernier message: ${daysSinceLastMessage}` : ''}
+
+Instructions:
+1. Si la conversation est stagnante (peu de messages ou ancien), propose des ice-breakers basés sur les intérêts communs
+2. Si la conversation est active, propose d'approfondir des sujets connexes
+3. Sois créatif, empathique et adapté aux personnalités
+4. Chaque suggestion doit être une question ou une phrase d'accroche prête à envoyer
+
+Format de réponse JSON attendu:
+{
+  "suggestions": [
+    {
+      "topic": "Nom du sujet (2-3 mots)",
+      "message": "Message prêt à envoyer",
+      "icon": "emoji représentant le sujet"
+    }
+  ]
+}`;
+
+      const response = await this.llmService.chat(
+        [{ role: 'user', content: prompt }],
+        { jsonMode: true, temperature: 0.8, maxTokens: 500 }
+      );
+
+      const result = JSON.parse(response.content);
+      return result;
+    } catch (error) {
+      this.logger.error(`Failed to generate conversation suggestions: ${error.message}`);
+
+      // Suggestions par défaut en cas d'erreur
+      return {
+        suggestions: [
+          {
+            topic: 'Passions',
+            message: 'Qu\'est-ce qui te passionne en ce moment ?',
+            icon: '✨',
+          },
+          {
+            topic: 'Voyage',
+            message: 'Si tu pouvais partir n\'importe où demain, ce serait où ?',
+            icon: '✈️',
+          },
+          {
+            topic: 'Week-end',
+            message: 'Tu as fait quoi de sympa ce week-end ?',
+            icon: '🌟',
+          },
+        ],
+      };
+    }
+  }
 }

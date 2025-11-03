@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { matchingService } from '@/services/matching'
 import { SearchFilters } from '@/types'
 import { useToast } from './useToast'
+import { matchesStorage } from '@/utils/matchesStorage'
 
 /**
  * Query keys pour les hooks de matching
@@ -17,14 +19,45 @@ export const matchingKeys = {
 
 /**
  * Hook pour récupérer la liste des matches
- * Avec cache automatique de 5 minutes
+ * Avec cache automatique de 5 minutes + cache persistant local
  */
 export function useMatches() {
-  return useQuery({
+  const queryClient = useQueryClient()
+
+  const query = useQuery({
     queryKey: matchingKeys.matches(),
-    queryFn: () => matchingService.getMatches(),
+    queryFn: async () => {
+      // Charger depuis le serveur
+      const matches = await matchingService.getMatches()
+
+      // Sauvegarder dans le cache persistant
+      await matchesStorage.saveMatches(matches)
+
+      return matches
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
+
+  // Charger le cache local de manière asynchrone au premier rendu
+  useEffect(() => {
+    const loadCache = async () => {
+      const cachedMatches = await matchesStorage.loadMatches()
+      if (cachedMatches && cachedMatches.length > 0) {
+        // Pré-remplir le cache React Query avec les données locales
+        queryClient.setQueryData(
+          matchingKeys.matches(),
+          cachedMatches
+        )
+      }
+    }
+
+    // Charger le cache uniquement si on n'a pas encore de données
+    if (!query.data || query.data.length === 0) {
+      loadCache()
+    }
+  }, [queryClient])
+
+  return query
 }
 
 /**

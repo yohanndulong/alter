@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { UnreadCountProvider } from './contexts/UnreadCountContext'
 import { NetworkProvider } from './contexts/NetworkContext'
+import { WebSocketProvider } from './contexts/WebSocketContext'
 import { ToastContainer, BottomNav, NetworkStatus } from './components'
 import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
@@ -246,11 +247,13 @@ const App: React.FC = () => {
       <ThemeProvider>
         <NetworkProvider>
           <AuthProvider>
-            <UnreadCountProvider>
-              <BrowserRouter>
-                <AppRoutes />
-              </BrowserRouter>
-            </UnreadCountProvider>
+            <WebSocketProvider>
+              <UnreadCountProvider>
+                <BrowserRouter>
+                  <AppRoutes />
+                </BrowserRouter>
+              </UnreadCountProvider>
+            </WebSocketProvider>
           </AuthProvider>
         </NetworkProvider>
       </ThemeProvider>

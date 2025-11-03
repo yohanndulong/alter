@@ -3,6 +3,7 @@ import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message } from '@/types'
 import { useAuth } from './AuthContext'
+import { alterDB } from '@/utils/indexedDB'
 
 interface UnreadCountContextType {
   unreadCount: number
@@ -95,24 +96,37 @@ export const UnreadCountProvider: React.FC<UnreadCountProviderProps> = ({ childr
     const socket = chatService.initChatSocket()
 
     // Écouter les nouveaux messages
-    const handleNewMessage = (message: Message) => {
+    const handleNewMessage = async (message: Message) => {
       // Si le message est envoyé par quelqu'un d'autre, incrémenter le compteur
       if (message.senderId !== user.id) {
-        // Trouver le matchId à partir du message
-        // Note: Le serveur devrait envoyer le matchId avec le message
-        // Pour l'instant, on va incrémenter de manière générique
-        setUnreadCount(prev => prev + 1)
+        // Incrémenter le compteur local
+        incrementUnread(message.matchId)
 
-        // Recharger le compteur pour avoir les données exactes
+        // Mettre à jour le cache IndexedDB
+        await alterDB.updateMatchUnreadCount(message.matchId, 1)
+
+        // Mettre à jour le dernier message dans le cache
+        if (message.content) {
+          await alterDB.updateMatchLastMessage(
+            message.matchId,
+            message.content,
+            new Date(message.createdAt)
+          )
+        }
+
+        // Recharger le compteur pour avoir les données exactes (fallback)
         setTimeout(() => loadUnreadCount(), 1000)
       }
     }
 
     // Écouter quand des messages sont marqués comme lus
-    const handleMessageRead = (data: { matchId: string; readBy: string }) => {
+    const handleMessageRead = async (data: { matchId: string; readBy: string }) => {
       // Si c'est nous qui lisons, réinitialiser le compteur pour ce match
       if (data.readBy === user.id) {
         resetUnread(data.matchId)
+
+        // Mettre à jour le cache IndexedDB (reset à 0)
+        await alterDB.updateMatch(data.matchId, { unreadCount: 0 })
       }
     }
 

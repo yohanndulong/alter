@@ -146,6 +146,7 @@
     "title": "My conversations",
     "noMatches": "No matches yet",
     "startSwiping": "Start discovering to find your matches",
+    "new": "New",
     "newMatch": "New match!",
     "matchMessage": "You matched with {{name}}!",
     "sendMessage": "Send a message",

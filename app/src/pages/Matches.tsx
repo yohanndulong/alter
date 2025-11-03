@@ -1,16 +1,20 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { ProfileModal, Logo, CachedImage, Badge, LoadingMoreIndicator } from '@/components'
 import { Match } from '@/types'
-import { useMatches, useConversationsStatus } from '@/hooks'
+import { useMatches, useConversationsStatus, chatKeys } from '@/hooks'
 import { formatRelativeTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
+import { chatService } from '@/services/chat'
+import { userChatStorage } from '@/utils/userChatStorage'
 import './Matches.css'
 
 export const Matches: React.FC = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
 
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null)
 
@@ -26,6 +30,49 @@ export const Matches: React.FC = () => {
       return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
     })
   }, [matches])
+
+  // Précharger les messages des 3 premières conversations en arrière-plan
+  useEffect(() => {
+    if (sortedMatches.length === 0) return
+
+    const prefetchConversations = async () => {
+      // Prendre les 3 premières conversations (les plus récentes)
+      const topMatches = sortedMatches.slice(0, 3)
+
+      for (const match of topMatches) {
+        try {
+          // Vérifier si on a déjà des messages en cache local
+          const cachedMessages = await userChatStorage.loadMessages(match.id)
+
+          if (cachedMessages.length > 0) {
+            // Pré-remplir le cache React Query avec les données locales
+            queryClient.setQueryData(
+              chatKeys.messages(match.id),
+              cachedMessages
+            )
+          }
+
+          // Précharger depuis le serveur en arrière-plan (ne bloque pas l'UI)
+          queryClient.prefetchQuery({
+            queryKey: chatKeys.messages(match.id),
+            queryFn: async () => {
+              const messages = await chatService.getMatchMessages(match.id, 50)
+              // Sauvegarder dans le cache persistant
+              await userChatStorage.saveMessages(match.id, messages)
+              return messages
+            },
+            staleTime: 2 * 60 * 1000, // 2 minutes
+          })
+        } catch (error) {
+          console.error(`Failed to prefetch messages for match ${match.id}:`, error)
+        }
+      }
+    }
+
+    // Attendre 500ms avant de précharger (pour ne pas ralentir le premier affichage)
+    const timeoutId = setTimeout(prefetchConversations, 500)
+    return () => clearTimeout(timeoutId)
+  }, [sortedMatches, queryClient])
 
   const handleMatchClick = (matchId: string) => {
     navigate(`/chat/${matchId}`)
@@ -90,32 +137,54 @@ export const Matches: React.FC = () => {
       </div>
 
       <div className="matches-list">
-        {sortedMatches.map((match) => (
-          <div
-            key={match.id}
-            className="matches-conversation"
-            onClick={() => handleMatchClick(match.id)}
-          >
+        {sortedMatches.map((match) => {
+          // Vérifier si le match est nouveau (< 24h)
+          const isNewMatch = () => {
+            const dayInMs = 24 * 60 * 60 * 1000
+            return Date.now() - new Date(match.matchedAt).getTime() < dayInMs
+          }
+
+          return (
             <div
-              className="matches-conversation-avatar"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleProfileClick(match)
-              }}
+              key={match.id}
+              className={`matches-conversation ${isNewMatch() ? 'matches-conversation--new' : ''}`}
+              onClick={() => handleMatchClick(match.id)}
             >
-              {match.matchedUser.images?.[0] ? (
-                <CachedImage
-                  src={getImageUrl(match.matchedUser.images[0]) || ''}
-                  alt={match.matchedUser.name}
-                  className="matches-conversation-avatar-image"
-                />
-              ) : (
-                <div className="matches-conversation-avatar-placeholder">
-                  {match.matchedUser.name.charAt(0).toUpperCase()}
+              {isNewMatch() && (
+                <div className="matches-conversation-new-badge">
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="7" fill="url(#newGradient)" />
+                    <path d="M8 3L9.5 6.5L13 7L10.5 9.5L11 13L8 11L5 13L5.5 9.5L3 7L6.5 6.5L8 3Z" fill="white" />
+                    <defs>
+                      <linearGradient id="newGradient" x1="0" y1="0" x2="16" y2="16">
+                        <stop offset="0%" stopColor="#FFD700" />
+                        <stop offset="100%" stopColor="#FFA500" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <span className="matches-conversation-new-text">{t('matches.new')}</span>
                 </div>
               )}
-              <Badge count={match.unreadCount} position="top-right" size="md" variant="error" />
-            </div>
+              <div
+                className="matches-conversation-avatar"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleProfileClick(match)
+                }}
+              >
+                {match.matchedUser.images?.[0] ? (
+                  <CachedImage
+                    src={getImageUrl(match.matchedUser.images[0]) || ''}
+                    alt={match.matchedUser.name}
+                    className="matches-conversation-avatar-image"
+                  />
+                ) : (
+                  <div className="matches-conversation-avatar-placeholder">
+                    {match.matchedUser.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <Badge count={match.unreadCount} position="top-right" size="md" variant="error" />
+              </div>
 
             <div className="matches-conversation-content">
               <div className="matches-conversation-header">
@@ -144,7 +213,8 @@ export const Matches: React.FC = () => {
               )}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       {conversationsStatus && (

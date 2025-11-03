@@ -271,4 +271,17 @@ export const chatService = {
   async generateShareMessage(): Promise<{ message: string }> {
     return api.get<{ message: string }>('/chat/ai/share-message')
   },
+
+  /**
+   * Obtient des suggestions de sujets de conversation
+   */
+  async getConversationSuggestions(matchId: string): Promise<{
+    suggestions: Array<{
+      topic: string
+      message: string
+      icon: string
+    }>
+  }> {
+    return api.get(`/chat/matches/${matchId}/suggestions`)
+  },
 }

@@ -146,6 +146,7 @@
     "title": "Mes discussions",
     "noMatches": "Aucun match pour le moment",
     "startSwiping": "Commencez à découvrir pour trouver vos matchs",
+    "new": "Nouveau",
     "newMatch": "Nouveau match !",
     "matchMessage": "Vous avez matché avec {{name}} !",
     "sendMessage": "Envoyer un message",
