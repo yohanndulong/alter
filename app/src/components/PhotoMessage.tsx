@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MessageMedia } from '@/types'
 import { chatService } from '@/services/chat'
+import { moderationService, ModerationResult } from '@/services/moderation'
 import { CachedImage } from './CachedImage'
 import { imageCache } from '@/services/imagePreloader'
 import './PhotoMessage.css'
@@ -25,22 +26,84 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
   const [countdown, setCountdown] = useState(media.viewDuration || 0)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [localReceiverStatus, setLocalReceiverStatus] = useState(media.receiverStatus)
   const [localViewed, setLocalViewed] = useState(false)
+  const [clientModerationResult, setClientModerationResult] = useState<ModerationResult | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const hasAnalyzed = useRef(false)
 
-  // Utiliser le statut local s'il existe, sinon celui du media
-  const currentReceiverStatus = localReceiverStatus || media.receiverStatus
+  // Utiliser directement media.receiverStatus au lieu d'un état local
+  // Cela permet aux mises à jour WebSocket de fonctionner correctement
 
   // Vérifier si la photo nécessite l'accord du destinataire
+  // Utiliser le résultat de modération CLIENT (pas serveur)
+  // Ne pas afficher la modale si la photo a déjà été vue
   const needsApproval =
     isReceiver &&
-    currentReceiverStatus === 'pending' &&
-    media.moderationResult &&
-    !media.moderationResult.isSafe
+    media.receiverStatus === 'pending' &&
+    clientModerationResult &&
+    !clientModerationResult.isSafe &&
+    !media.viewed &&
+    !localViewed
 
   // Photo rejetée
-  const isRejected = currentReceiverStatus === 'rejected'
+  const isRejected = media.receiverStatus === 'rejected'
+
+  // Analyser l'image côté client quand elle arrive (uniquement pour le destinataire)
+  useEffect(() => {
+    // Ne pas analyser si :
+    // - On a déjà analysé
+    // - C'est notre propre photo
+    // - Pas d'URL
+    // - Photo déjà vue
+    // - En cours d'analyse
+    if (hasAnalyzed.current || isSent || !media.url || media.viewed || isAnalyzing) {
+      return
+    }
+
+    // Si le destinataire reçoit une photo, l'analyser
+    if (isReceiver && media.processingStatus === 'completed') {
+      hasAnalyzed.current = true
+      setIsAnalyzing(true)
+
+      console.log('🔍 Starting client-side NSFW analysis for received photo')
+
+      moderationService
+        .analyzeImage(media.url)
+        .then(async result => {
+          console.log('📊 Client-side moderation result:', result)
+          setClientModerationResult(result)
+
+          // Si safe, accepter automatiquement via l'API
+          // Le WebSocket mettra à jour le cache automatiquement
+          if (result.isSafe) {
+            try {
+              await chatService.acceptMedia(matchId, media.id)
+              console.log('✅ Auto-accepted safe photo')
+            } catch (error) {
+              console.error('Failed to auto-accept media:', error)
+            }
+          }
+          // Si NSFW, ne rien faire - la modale s'affichera
+        })
+        .catch(async error => {
+          console.error('❌ Client-side moderation failed:', error)
+          // En cas d'erreur, accepter par défaut
+          setClientModerationResult({
+            isSafe: true,
+            warnings: ['analysis_failed'],
+          })
+          try {
+            await chatService.acceptMedia(matchId, media.id)
+          } catch (err) {
+            console.error('Failed to auto-accept media after error:', err)
+          }
+        })
+        .finally(() => {
+          setIsAnalyzing(false)
+        })
+    }
+  }, [media.url, media.processingStatus, isReceiver, isSent, media.viewed, isAnalyzing])
 
   useEffect(() => {
     // Si c'est une photo "once" et qu'elle a été vue côté serveur (pas juste localement), la masquer
@@ -147,9 +210,8 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     setIsProcessing(true)
     try {
       await chatService.acceptMedia(matchId, media.id)
-      // Mettre à jour le statut local pour masquer la modal
-      setLocalReceiverStatus('accepted')
-      // Révéler l'image
+      // Le WebSocket mettra à jour le cache automatiquement
+      // On révèle l'image immédiatement pour une meilleure UX
       setIsRevealed(true)
 
       // Si mode "once", démarrer le compte à rebours
@@ -205,8 +267,10 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     setIsProcessing(true)
     try {
       await chatService.rejectMedia(matchId, media.id)
-      // Mettre à jour le statut local pour afficher le refus
-      setLocalReceiverStatus('rejected')
+      // Ne PAS mettre à jour le statut local ici
+      // Le WebSocket va mettre à jour le cache React Query automatiquement
+      // On laisse juste le composant se re-render avec les nouvelles données du cache
+      console.log('✅ Media rejected, waiting for WebSocket update...')
     } catch (error) {
       console.error('Failed to reject media:', error)
     } finally {
@@ -214,13 +278,23 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     }
   }
 
+  // Vérifier si la photo est en cours de traitement (serveur ou client)
+  const isProcessingNSFW = media.processingStatus === 'processing' || (isReceiver && isAnalyzing)
+
   return (
     <div className={`photo-message ${isSent ? 'photo-message--sent' : 'photo-message--received'}`}>
-      {isRejected ? (
+      {isProcessingNSFW ? (
+        <div className="photo-message-processing">
+          <div className="photo-message-processing-spinner"></div>
+          <div className="photo-message-processing-text">
+            {isAnalyzing ? t('chat.photoAnalyzing') : t('chat.photoProcessing')}
+          </div>
+        </div>
+      ) : isRejected ? (
         <div className="photo-message-rejected">
           <div className="photo-message-rejected-icon">🚫</div>
           <div className="photo-message-rejected-text">
-            {t('chat.photoRejected')}
+            {isSent ? t('chat.photoRejectedBySender') : t('chat.photoRejectedByReceiver')}
           </div>
         </div>
       ) : needsApproval ? (

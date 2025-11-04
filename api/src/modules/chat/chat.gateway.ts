@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
+import { MediaService } from './media.service';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -29,10 +30,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly chatService: ChatService,
+    private readonly mediaService: MediaService,
     private readonly jwtService: JwtService,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
-  ) {}
+  ) {
+    // S'enregistrer auprès du MediaService pour les notifications
+    this.mediaService.setGateway(this);
+  }
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
@@ -159,8 +164,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       { read: true, readAt: new Date() }
     );
 
-    // Notifier l'autre utilisateur que les messages ont été lus
-    client.to(`match-${payload.matchId}`).emit('message:read', {
+    // Notifier TOUS les utilisateurs (y compris celui qui lit) pour synchroniser les compteurs
+    this.server.to(`match-${payload.matchId}`).emit('message:read', {
       matchId: payload.matchId,
       readBy: client.userId,
     });

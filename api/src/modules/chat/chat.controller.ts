@@ -221,7 +221,7 @@ export class ChatController {
 
     const savedMessage = await this.messageRepository.save(message);
 
-    // Upload de la photo avec modération
+    // Upload de la photo (l'analyse NSFW sera faite côté client)
     const media = await this.mediaService.uploadPhotoMessage(
       savedMessage.id,
       file,
@@ -230,6 +230,7 @@ export class ChatController {
         viewMode: viewMode || PhotoViewMode.UNLIMITED,
         viewDuration: viewDuration ? parseInt(viewDuration) : undefined,
       },
+      matchId,
     );
 
     // Générer l'URL signée
@@ -240,10 +241,7 @@ export class ChatController {
       media: {
         ...media,
         url,
-        // Inclure les warnings de modération si nécessaire
-        moderationWarnings: media.moderationResult?.isSafe
-          ? []
-          : media.moderationResult?.warnings || [],
+        processingStatus: media.processingStatus,
       },
     };
 
@@ -355,6 +353,13 @@ export class ChatController {
     }
 
     await this.mediaService.acceptMedia(mediaId, user.id);
+
+    // Notifier via WebSocket que le média a été accepté
+    this.chatGateway.server.to(`match-${matchId}`).emit('media:accepted', {
+      mediaId,
+      matchId,
+      acceptedBy: user.id,
+    });
 
     return { message: 'Media accepted' };
   }

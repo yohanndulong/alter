@@ -148,9 +148,102 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     // Handler pour media rejected
     // ========================================
     const handleMediaRejected = (data: { mediaId: string; matchId: string; rejectedBy: string }) => {
-      console.log('❌ WebSocket: Media rejected', data)
-      // Invalider les messages pour refresh
-      queryClient.invalidateQueries({ queryKey: chatKeys.messages(data.matchId) })
+      console.log('❌ WebSocket: Media rejected by', data.rejectedBy)
+
+      // Mettre à jour le message dans le cache pour refléter le refus
+      queryClient.setQueryData<Message[]>(
+        chatKeys.messages(data.matchId),
+        (old = []) => old.map(msg => {
+          // Trouver le message avec ce media
+          if (msg.media?.id === data.mediaId) {
+            return {
+              ...msg,
+              media: {
+                ...msg.media,
+                receiverStatus: 'rejected' as const,
+                receiverDecisionAt: new Date(),
+              },
+            }
+          }
+          return msg
+        })
+      )
+
+      console.log('✅ WebSocket: Media marked as rejected in cache')
+    }
+
+    // ========================================
+    // Handler pour media accepted
+    // ========================================
+    const handleMediaAccepted = (data: { mediaId: string; matchId: string; acceptedBy: string }) => {
+      console.log('✅ WebSocket: Media accepted by', data.acceptedBy)
+
+      // Mettre à jour le message dans le cache pour refléter l'acceptation
+      queryClient.setQueryData<Message[]>(
+        chatKeys.messages(data.matchId),
+        (old = []) => old.map(msg => {
+          // Trouver le message avec ce media
+          if (msg.media?.id === data.mediaId) {
+            return {
+              ...msg,
+              media: {
+                ...msg.media,
+                receiverStatus: 'accepted' as const,
+                receiverDecisionAt: new Date(),
+              },
+            }
+          }
+          return msg
+        })
+      )
+
+      console.log('✅ WebSocket: Media marked as accepted in cache')
+    }
+
+    // ========================================
+    // Handler pour photo ready (analyse NSFW terminée)
+    // ========================================
+    const handlePhotoReady = (data: {
+      mediaId: string
+      matchId: string
+      processingStatus: 'completed' | 'failed'
+      receiverStatus: 'pending' | 'accepted' | 'rejected'
+      moderationResult?: {
+        isSafe: boolean
+        pornScore?: number
+        sexyScore?: number
+        hentaiScore?: number
+        neutralScore?: number
+        warnings?: string[]
+      }
+      moderationWarnings: string[]
+      url: string
+    }) => {
+      console.log('📸 WebSocket: Photo ready', data)
+
+      // Mettre à jour le message dans le cache React Query
+      queryClient.setQueryData<Message[]>(
+        chatKeys.messages(data.matchId),
+        (old = []) => old.map(msg => {
+          // Trouver le message avec ce media
+          if (msg.media?.id === data.mediaId) {
+            return {
+              ...msg,
+              media: {
+                ...msg.media,
+                processingStatus: data.processingStatus,
+                receiverStatus: data.receiverStatus,
+                moderationResult: data.moderationResult, // Inclure le résultat complet de modération
+                moderationWarnings: data.moderationWarnings,
+                url: data.url,
+              },
+            }
+          }
+          return msg
+        })
+      )
+
+      console.log('✅ WebSocket: Photo updated in cache')
     }
 
     // ========================================
@@ -169,6 +262,13 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     chatService.onMessageDelivered(handleMessageDelivered)
     chatService.onMessageRead(handleMessageRead)
     chatService.onMediaRejected(handleMediaRejected)
+
+    // Écouter les événements photo:ready et media:accepted
+    const socket = chatService.initChatSocket()
+    if (socket) {
+      socket.on('photo:ready', handlePhotoReady)
+      socket.on('media:accepted', handleMediaAccepted)
+    }
 
     console.log('✅ Global WebSocket connection established')
 

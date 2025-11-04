@@ -69,6 +69,8 @@ export type PhotoViewMode = 'once' | 'unlimited'
 
 export type MediaReceiverStatus = 'pending' | 'accepted' | 'rejected'
 
+export type MediaProcessingStatus = 'processing' | 'completed' | 'failed'
+
 export interface MessageMedia {
   id: string
   messageId: string
@@ -90,6 +92,7 @@ export interface MessageMedia {
   }
   receiverStatus?: MediaReceiverStatus // Statut d'acceptation par le destinataire
   receiverDecisionAt?: Date // Date de décision du destinataire
+  processingStatus?: MediaProcessingStatus // Statut de l'analyse NSFW
   url?: string // URL signée générée par le serveur
   moderationWarnings?: string[]
 }

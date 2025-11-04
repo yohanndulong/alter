@@ -11,7 +11,6 @@ import { userChatStorage } from '@/utils/userChatStorage'
 import { formatTime } from '@/utils/date'
 import { getImageUrl } from '@/utils/image'
 import { useAuth } from '@/contexts/AuthContext'
-import { useUnreadCountContext } from '@/contexts/UnreadCountContext'
 import { CapturedPhoto } from '@/services/camera'
 import './Chat.css'
 
@@ -21,7 +20,6 @@ export const Chat: React.FC = () => {
   const navigate = useNavigate()
   const { error: showError, success } = useToast()
   const { user } = useAuth()
-  const { resetUnread } = useUnreadCountContext()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [match, setMatch] = useState<Match | null>(null)
@@ -207,6 +205,9 @@ export const Chat: React.FC = () => {
     }
   }
 
+  // Track si on a déjà marqué comme lu pour éviter les appels répétés
+  const hasMarkedAsRead = useRef(false)
+
   // Initialiser les statuts delivered/read depuis les messages
   useEffect(() => {
     if (!messages || messages.length === 0) return
@@ -222,15 +223,23 @@ export const Chat: React.FC = () => {
     setDeliveredMessages(delivered)
     setReadMessages(read)
 
-    // Marquer comme lu et notifier
-    if (matchId && messages.length > 0) {
-      chatService.markAsRead(matchId)
-      resetUnread(matchId)
-      chatService.sendMessageRead(matchId, messages[messages.length - 1].id)
-    }
-
     setTimeout(() => scrollToBottom(), 100)
-  }, [messages, matchId])
+  }, [messages])
+
+  // Marquer comme lu UNIQUEMENT au chargement initial ou changement de match
+  // Le WebSocket notifiera UnreadCountContext qui mettra à jour le compteur
+  useEffect(() => {
+    if (matchId && messages.length > 0 && !hasMarkedAsRead.current) {
+      console.log('📖 Sending message-read event via WebSocket for match:', matchId)
+      chatService.sendMessageRead(matchId, messages[messages.length - 1].id)
+      hasMarkedAsRead.current = true
+    }
+  }, [matchId, messages.length])
+
+  // Reset le flag quand on change de match
+  useEffect(() => {
+    hasMarkedAsRead.current = false
+  }, [matchId])
 
   const loadMoreMessages = async () => {
     if (!matchId || !user?.id || isLoadingMore || !hasMoreMessages) return

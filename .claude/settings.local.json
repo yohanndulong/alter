@@ -19,7 +19,9 @@
       "Bash(npm run android:install:debug:*)",
       "Bash(npm install:*)",
       "Bash(npx cap sync:*)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(dir /b c:devalteralterapisrcmoduleschatmoderation*.ts)",
+      "Bash(nul)"
     ],
     "deny": [],
     "ask": []

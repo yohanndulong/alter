@@ -9,7 +9,6 @@ import { Match } from '../matching/entities/match.entity';
 import { User } from '../users/entities/user.entity';
 import { ChatService } from './chat.service';
 import { MediaService } from './media.service';
-import { ModerationService } from './moderation.service';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
 import { UsersModule } from '../users/users.module';
@@ -41,7 +40,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [ChatController],
-  providers: [ChatService, MediaService, ModerationService, ChatGateway],
+  providers: [ChatService, MediaService, ChatGateway],
   exports: [ChatService, MediaService],
 })
 export class ChatModule {}

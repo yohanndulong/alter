@@ -507,3 +507,36 @@
 .photo-message-sensitive-btn--reject:active:not(:disabled) {
   transform: translateY(0);
 }
+
+/* Photo processing state */
+.photo-message-processing {
+  width: 100%;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+}
+
+.photo-message-processing-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: photo-processing-spin 1s linear infinite;
+}
+
+@keyframes photo-processing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.photo-message-processing-text {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  font-weight: 500;
+}

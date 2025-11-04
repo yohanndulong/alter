@@ -1,9 +1,8 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MessageMedia, PhotoViewMode, MediaReceiverStatus } from './entities/message-media.entity';
-import { ModerationService } from './moderation.service';
+import { MessageMedia, PhotoViewMode, MediaReceiverStatus, MediaProcessingStatus } from './entities/message-media.entity';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as crypto from 'crypto';
@@ -13,11 +12,11 @@ export class MediaService {
   private readonly logger = new Logger(MediaService.name);
   private readonly uploadDir: string;
   private readonly maxFileSize: number;
+  private gatewayInstance: any = null;
 
   constructor(
     @InjectRepository(MessageMedia)
     private readonly mediaRepository: Repository<MessageMedia>,
-    private readonly moderationService: ModerationService,
     private readonly configService: ConfigService,
   ) {
     this.uploadDir = this.configService.get<string>('UPLOAD_DIR') || './uploads/chat-media';
@@ -25,6 +24,13 @@ export class MediaService {
 
     // Créer le dossier s'il n'existe pas
     this.ensureUploadDir();
+  }
+
+  /**
+   * Permet au gateway de s'enregistrer (évite la dépendance circulaire)
+   */
+  setGateway(gateway: any) {
+    this.gatewayInstance = gateway;
   }
 
   private async ensureUploadDir() {
@@ -76,7 +82,8 @@ export class MediaService {
   }
 
   /**
-   * Upload une photo avec modération
+   * Upload une photo SANS modération côté serveur
+   * L'analyse NSFW se fera côté client (navigateur/mobile du destinataire)
    */
   async uploadPhotoMessage(
     messageId: string,
@@ -86,6 +93,7 @@ export class MediaService {
       viewMode: PhotoViewMode;
       viewDuration?: number;
     },
+    matchId: string, // Pour compatibilité
   ): Promise<MessageMedia> {
     this.logger.log(`📸 Uploading photo message for message ${messageId}`);
 
@@ -101,48 +109,29 @@ export class MediaService {
 
     // Générer un nom de fichier unique
     const filename = this.generateFilename('photo', file.originalname);
-    const tempFilePath = path.join(this.uploadDir, filename);
 
-    // Sauvegarder temporairement pour modération
-    await fs.writeFile(tempFilePath, file.buffer);
-
-    // Modération de l'image
-    const moderationResult = await this.moderationService.moderateImage(tempFilePath);
-
-    // Supprimer le fichier temporaire
-    try {
-      await fs.unlink(tempFilePath);
-    } catch (error) {
-      this.logger.warn(`Failed to delete temp file: ${error.message}`);
-    }
-
-    // Créer l'entrée en base avec les données binaires
+    // Créer immédiatement l'entrée en base avec statut "COMPLETED"
+    // L'analyse NSFW sera faite côté client
     const media = this.mediaRepository.create({
       messageId,
-      filePath: filename, // Utilisé comme identifiant unique
+      filePath: filename,
       fileData: file.buffer, // Stocker les données en base
       mimeType: file.mimetype,
       fileSize: file.size,
       isReel: options.isReel || false,
       viewMode: options.viewMode,
       viewDuration: options.viewDuration,
-      moderationResult,
-      // Si le contenu n'est pas safe, il faut l'accord du destinataire
-      receiverStatus: moderationResult.isSafe
-        ? MediaReceiverStatus.ACCEPTED
-        : MediaReceiverStatus.PENDING,
+      processingStatus: MediaProcessingStatus.COMPLETED, // Directement completed
+      receiverStatus: MediaReceiverStatus.PENDING, // Le destinataire décidera après analyse client
     });
 
-    await this.mediaRepository.save(media);
+    const savedMedia = await this.mediaRepository.save(media);
 
-    if (!moderationResult.isSafe) {
-      this.logger.warn(`⚠️  Photo contains sensitive content: ${moderationResult.warnings.join(', ')}`);
-    } else {
-      this.logger.log(`✅ Photo uploaded to database and passed moderation: ${filename}`);
-    }
+    this.logger.log(`✅ Photo uploaded to database (client-side moderation): ${filename}`);
 
-    return media;
+    return savedMedia;
   }
+
 
   /**
    * Génère une URL signée pour accéder au média

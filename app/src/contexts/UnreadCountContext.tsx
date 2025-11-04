@@ -114,8 +114,8 @@ export const UnreadCountProvider: React.FC<UnreadCountProviderProps> = ({ childr
           )
         }
 
-        // Recharger le compteur pour avoir les données exactes (fallback)
-        setTimeout(() => loadUnreadCount(), 1000)
+        // Note: Pas besoin de recharger loadUnreadCount car on met à jour le state directement
+        // Cela évite des appels API inutiles à /matching/matches
       }
     }
 

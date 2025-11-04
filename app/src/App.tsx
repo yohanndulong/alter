@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -11,6 +11,7 @@ import { ToastContainer, BottomNav, NetworkStatus } from './components'
 import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
 import { queryClient } from './lib/queryClient'
+import { moderationService } from './services/moderation'
 
 import { Login } from './pages/Login'
 import { VerifyCode } from './pages/VerifyCode'
@@ -115,6 +116,16 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppRoutes: React.FC = () => {
   const { toasts, removeToast } = useToast()
+
+  // Précharger le modèle NSFW au démarrage de l'app
+  useEffect(() => {
+    console.log('🚀 Preloading NSFW detection model...')
+    moderationService.preload().then(() => {
+      console.log('✅ NSFW model preloaded successfully')
+    }).catch(error => {
+      console.error('❌ Failed to preload NSFW model:', error)
+    })
+  }, [])
 
   // Enable OTA updates only on native platforms
   if (Capacitor.isNativePlatform()) {

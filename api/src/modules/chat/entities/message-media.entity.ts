@@ -19,6 +19,12 @@ export enum MediaReceiverStatus {
   REJECTED = 'rejected', // Refusé par le destinataire
 }
 
+export enum MediaProcessingStatus {
+  PROCESSING = 'processing', // Analyse NSFW en cours
+  COMPLETED = 'completed', // Analyse terminée
+  FAILED = 'failed', // Erreur lors de l'analyse
+}
+
 @Entity('message_media')
 export class MessageMedia {
   @PrimaryGeneratedColumn('uuid')
@@ -96,6 +102,14 @@ export class MessageMedia {
   // Date de décision du destinataire
   @Column({ type: 'timestamp', nullable: true })
   receiverDecisionAt: Date;
+
+  // Statut du traitement (analyse NSFW)
+  @Column({
+    type: 'enum',
+    enum: MediaProcessingStatus,
+    default: MediaProcessingStatus.COMPLETED,
+  })
+  processingStatus: MediaProcessingStatus;
 
   // Thumbnail pour les photos (URL signée)
   @Column({ nullable: true })
