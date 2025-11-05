@@ -109,8 +109,6 @@ export function useSendMessage(matchId: string) {
  * donc pas besoin d'invalider ici
  */
 export function useMarkAsRead(matchId: string) {
-  const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: () => chatService.markAsRead(matchId),
     onSuccess: () => {
