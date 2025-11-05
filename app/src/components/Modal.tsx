@@ -92,8 +92,9 @@ export const Modal: React.FC<ModalProps> = ({
       if (hasAddedState) {
         try {
           if (window.history.state?.modalId === modalId) {
-            console.log('📖 Modal: Cleaning history state')
-            window.history.back()
+            console.log('📖 Modal: Cleaning history state with replaceState')
+            // Utiliser replaceState au lieu de back() pour éviter de naviguer vers la page précédente
+            window.history.replaceState(null, '', window.location.href)
           }
         } catch (e) {
           // Ignorer les erreurs si l'historique a déjà été modifié
