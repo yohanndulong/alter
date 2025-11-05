@@ -55,6 +55,9 @@ export class ChatService {
       senderId,
       receiverId,
       content,
+      // Marquer comme livré immédiatement (création = livraison au serveur)
+      delivered: true,
+      deliveredAt: new Date(),
     });
 
     const savedMessage = await this.messageRepository.save(message);

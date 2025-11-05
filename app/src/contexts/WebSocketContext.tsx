@@ -56,8 +56,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     // ========================================
     const handleNewMessage = async (message: Message) => {
       console.log('📨 WebSocket: New message received', {
+        id: message.id,
         matchId: message.matchId,
         senderId: message.senderId,
+        content: message.content?.substring(0, 50),
         isOwnMessage: message.senderId === user.id,
       })
 
@@ -65,26 +67,39 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       await alterDB.addMessage(message.matchId, message)
 
       // 2. Mettre à jour le cache React Query des messages
-      queryClient.setQueryData<Message[]>(
+      const result = queryClient.setQueryData<Message[]>(
         chatKeys.messages(message.matchId),
         (old = []) => {
           // Éviter les doublons
           const exists = old.some(m => m.id === message.id)
-          if (exists) return old
+          if (exists) {
+            console.log('⚠️ WebSocket: Message already exists in cache, ignoring', message.id)
+            return old
+          }
 
           // Si c'est notre propre message, supprimer l'optimistic update
           if (message.senderId === user.id) {
             const filtered = old.filter(
               m => !(m.id.startsWith('temp-') && m.content === message.content)
             )
+            console.log('📝 WebSocket: Replacing optimistic message', {
+              removed: old.length - filtered.length,
+              total: filtered.length + 1
+            })
             return [...filtered, message]
           }
 
+          console.log('➕ WebSocket: Adding new message to cache', {
+            from: old.length,
+            to: old.length + 1
+          })
           return [...old, message]
         }
       )
 
-      // 3. Mettre à jour le cache des matches (lastMessage, unreadCount)
+      console.log('💾 WebSocket: Cache updated, total messages:', result?.length || 0)
+
+      // 3. Mettre à jour le cache des matches (lastMessage, unreadCount) sans refetch
       if (message.senderId !== user.id) {
         // Incrémenter unreadCount seulement si ce n'est pas notre message
         await alterDB.updateMatchUnreadCount(message.matchId, 1)
@@ -98,8 +113,25 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         )
       }
 
-      // 4. Invalider le cache des matches pour forcer un refresh de la liste
-      queryClient.invalidateQueries({ queryKey: matchingKeys.matches() })
+      // 4. Mettre à jour le cache des matches directement (sans refetch = pas de rechargement d'images)
+      queryClient.setQueryData<any[]>(
+        matchingKeys.matches(),
+        (oldMatches = []) => {
+          return oldMatches.map(match => {
+            if (match.id === message.matchId) {
+              return {
+                ...match,
+                lastMessage: message.content || match.lastMessage,
+                lastMessageAt: message.createdAt,
+                unreadCount: message.senderId !== user.id
+                  ? (match.unreadCount || 0) + 1
+                  : match.unreadCount,
+              }
+            }
+            return match
+          })
+        }
+      )
 
       console.log('✅ WebSocket: Message processed and cached')
     }
@@ -130,7 +162,22 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       // Si c'est nous qui lisons, reset unreadCount
       if (data.readBy === user.id) {
         await alterDB.updateMatch(data.matchId, { unreadCount: 0 })
-        queryClient.invalidateQueries({ queryKey: matchingKeys.matches() })
+
+        // Mettre à jour le cache directement sans refetch
+        queryClient.setQueryData<any[]>(
+          matchingKeys.matches(),
+          (oldMatches = []) => {
+            return oldMatches.map(match => {
+              if (match.id === data.matchId) {
+                return {
+                  ...match,
+                  unreadCount: 0,
+                }
+              }
+              return match
+            })
+          }
+        )
       } else {
         // L'autre personne a lu nos messages
         queryClient.setQueryData<Message[]>(

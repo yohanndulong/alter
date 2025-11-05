@@ -39,8 +39,6 @@ export const Chat: React.FC = () => {
   const [showVoiceRecorder, setShowVoiceRecorder] = useState(false)
   const [showCameraCapture, setShowCameraCapture] = useState(false)
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false)
-  const [deliveredMessages, setDeliveredMessages] = useState<Set<string>>(new Set())
-  const [readMessages, setReadMessages] = useState<Set<string>>(new Set())
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -63,51 +61,30 @@ export const Chat: React.FC = () => {
     loadMatch()
 
     // Rejoindre la room du match spécifique
-    // Note: le WebSocket est déjà initialisé globalement par WebSocketContext
     chatService.joinMatch(matchId)
 
-    // Fonction handler UNIQUEMENT pour les indicateurs visuels locaux (typing, delivered, read)
-    // Les messages sont gérés par WebSocketContext qui met à jour IndexedDB + React Query
+    // ========================================
+    // Architecture simplifiée :
+    // - WebSocketContext (global) : gère tous les événements de messages, statuts, médias
+    // - Chat.tsx (local) : gère uniquement l'indicateur "typing" pour l'affichage UI
+    // - Les statuts (delivered, read) viennent directement du backend via les objets Message
+    // - Plus besoin de Sets locaux pour tracker les statuts
+    // ========================================
     const handleTyping = (data: { userId: string; isTyping: boolean }) => {
       if (data.userId !== user.id) {
         setIsOtherUserTyping(data.isTyping)
       }
     }
 
-    const handleMessageDelivered = (data: { messageId: string; deliveredTo: string }) => {
-      setDeliveredMessages(prev => new Set([...prev, data.messageId]))
-    }
-
-    const handleMessageRead = (data: { matchId: string; readBy: string }) => {
-      if (data.matchId === matchId) {
-        setReadMessages(prev => {
-          const newSet = new Set(prev)
-          messages.forEach(msg => {
-            if (msg.senderId === user.id) {
-              newSet.add(msg.id)
-            }
-          })
-          return newSet
-        })
-      }
-    }
-
-    // Enregistrer les listeners pour les indicateurs visuels uniquement
     chatService.onTyping(handleTyping)
-    chatService.onMessageDelivered(handleMessageDelivered)
-    chatService.onMessageRead(handleMessageRead)
 
-    // Cleanup : retirer les listeners (mais NE PAS déconnecter le socket global)
     return () => {
       const socket = chatService.initChatSocket()
       if (socket) {
         socket.off('user-typing', handleTyping)
-        socket.off('message:delivered', handleMessageDelivered)
-        socket.off('message:read', handleMessageRead)
       }
-      // NE PAS déconnecter le socket, il reste actif globalement
     }
-  }, [matchId, user?.id, messages])
+  }, [matchId, user?.id])
 
   // Scroll vers le premier message non lu au chargement initial
   const hasScrolledToUnread = useRef(false)
@@ -208,23 +185,12 @@ export const Chat: React.FC = () => {
   // Track si on a déjà marqué comme lu pour éviter les appels répétés
   const hasMarkedAsRead = useRef(false)
 
-  // Initialiser les statuts delivered/read depuis les messages
+  // Auto-scroll vers le bas UNIQUEMENT quand de nouveaux messages arrivent
+  // (après le scroll initial vers le premier message non lu)
   useEffect(() => {
-    if (!messages || messages.length === 0) return
-
-    const delivered = new Set<string>()
-    const read = new Set<string>()
-
-    messages.forEach(msg => {
-      if (msg.delivered) delivered.add(msg.id)
-      if (msg.read) read.add(msg.id)
-    })
-
-    setDeliveredMessages(delivered)
-    setReadMessages(read)
-
+    if (!messages || messages.length === 0 || !hasScrolledToUnread.current) return
     setTimeout(() => scrollToBottom(), 100)
-  }, [messages])
+  }, [messages.length])
 
   // Marquer comme lu UNIQUEMENT au chargement initial ou changement de match
   // Le WebSocket notifiera UnreadCountContext qui mettra à jour le compteur
@@ -620,8 +586,8 @@ export const Chat: React.FC = () => {
             messages.map(message => {
               const isSent = message.senderId === user?.id
               const isReceiver = !isSent
-              const isDelivered = deliveredMessages.has(message.id)
-              const isRead = readMessages.has(message.id)
+              const isDelivered = message.delivered || false
+              const isRead = message.read || false
 
               return (
                 <div

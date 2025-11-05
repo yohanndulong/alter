@@ -105,6 +105,8 @@ export function useSendMessage(matchId: string) {
 
 /**
  * Hook pour marquer les messages comme lus
+ * Note: Le WebSocket gère automatiquement la mise à jour du cache,
+ * donc pas besoin d'invalider ici
  */
 export function useMarkAsRead(matchId: string) {
   const queryClient = useQueryClient()
@@ -112,8 +114,8 @@ export function useMarkAsRead(matchId: string) {
   return useMutation({
     mutationFn: () => chatService.markAsRead(matchId),
     onSuccess: () => {
-      // Invalider le cache des matches pour mettre à jour unreadCount
-      queryClient.invalidateQueries({ queryKey: ['matching', 'matches'] })
+      // Le WebSocket met à jour le cache automatiquement via handleMessageRead
+      // Pas besoin d'invalider ici pour éviter les refetch inutiles
     },
   })
 }

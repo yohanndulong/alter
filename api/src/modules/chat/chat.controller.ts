@@ -149,6 +149,8 @@ export class ChatController {
       senderId: user.id,
       receiverId,
       type: MessageType.VOICE,
+      delivered: true,
+      deliveredAt: new Date(),
     });
 
     const savedMessage = await this.messageRepository.save(message);
@@ -217,6 +219,8 @@ export class ChatController {
       senderId: user.id,
       receiverId,
       type: MessageType.PHOTO,
+      delivered: true,
+      deliveredAt: new Date(),
     });
 
     const savedMessage = await this.messageRepository.save(message);
