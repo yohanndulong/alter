@@ -147,16 +147,16 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     // ========================================
     // Handler pour media rejected
     // ========================================
-    const handleMediaRejected = (data: { mediaId: string; matchId: string; rejectedBy: string }) => {
+    const handleMediaRejected = async (data: { mediaId: string; matchId: string; rejectedBy: string }) => {
       console.log('❌ WebSocket: Media rejected by', data.rejectedBy)
 
-      // Mettre à jour le message dans le cache pour refléter le refus
+      // Mettre à jour le message dans le cache React Query
       queryClient.setQueryData<Message[]>(
         chatKeys.messages(data.matchId),
         (old = []) => old.map(msg => {
           // Trouver le message avec ce media
           if (msg.media?.id === data.mediaId) {
-            return {
+            const updatedMsg = {
               ...msg,
               media: {
                 ...msg.media,
@@ -164,27 +164,34 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
                 receiverDecisionAt: new Date(),
               },
             }
+
+            // Mettre à jour IndexedDB pour persister le changement
+            alterDB.addMessage(data.matchId, updatedMsg).catch(err => {
+              console.error('Failed to update message in IndexedDB:', err)
+            })
+
+            return updatedMsg
           }
           return msg
         })
       )
 
-      console.log('✅ WebSocket: Media marked as rejected in cache')
+      console.log('✅ WebSocket: Media marked as rejected in cache and IndexedDB')
     }
 
     // ========================================
     // Handler pour media accepted
     // ========================================
-    const handleMediaAccepted = (data: { mediaId: string; matchId: string; acceptedBy: string }) => {
+    const handleMediaAccepted = async (data: { mediaId: string; matchId: string; acceptedBy: string }) => {
       console.log('✅ WebSocket: Media accepted by', data.acceptedBy)
 
-      // Mettre à jour le message dans le cache pour refléter l'acceptation
+      // Mettre à jour le message dans le cache React Query
       queryClient.setQueryData<Message[]>(
         chatKeys.messages(data.matchId),
         (old = []) => old.map(msg => {
           // Trouver le message avec ce media
           if (msg.media?.id === data.mediaId) {
-            return {
+            const updatedMsg = {
               ...msg,
               media: {
                 ...msg.media,
@@ -192,12 +199,19 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
                 receiverDecisionAt: new Date(),
               },
             }
+
+            // Mettre à jour IndexedDB pour persister le changement
+            alterDB.addMessage(data.matchId, updatedMsg).catch(err => {
+              console.error('Failed to update message in IndexedDB:', err)
+            })
+
+            return updatedMsg
           }
           return msg
         })
       )
 
-      console.log('✅ WebSocket: Media marked as accepted in cache')
+      console.log('✅ WebSocket: Media marked as accepted in cache and IndexedDB')
     }
 
     // ========================================

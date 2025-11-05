@@ -56,13 +56,22 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     // - C'est notre propre photo
     // - Pas d'URL
     // - Photo déjà vue
+    // - Photo déjà acceptée ou refusée
     // - En cours d'analyse
-    if (hasAnalyzed.current || isSent || !media.url || media.viewed || isAnalyzing) {
+    if (
+      hasAnalyzed.current ||
+      isSent ||
+      !media.url ||
+      media.viewed ||
+      media.receiverStatus === 'accepted' ||
+      media.receiverStatus === 'rejected' ||
+      isAnalyzing
+    ) {
       return
     }
 
     // Si le destinataire reçoit une photo, l'analyser
-    if (isReceiver && media.processingStatus === 'completed') {
+    if (isReceiver && media.processingStatus === 'completed' && media.receiverStatus === 'pending') {
       hasAnalyzed.current = true
       setIsAnalyzing(true)
 
@@ -103,7 +112,7 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
           setIsAnalyzing(false)
         })
     }
-  }, [media.url, media.processingStatus, isReceiver, isSent, media.viewed, isAnalyzing])
+  }, [media.url, media.processingStatus, media.receiverStatus, isReceiver, isSent, media.viewed, isAnalyzing])
 
   useEffect(() => {
     // Si c'est une photo "once" et qu'elle a été vue côté serveur (pas juste localement), la masquer
@@ -267,9 +276,14 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     setIsProcessing(true)
     try {
       await chatService.rejectMedia(matchId, media.id)
-      // Ne PAS mettre à jour le statut local ici
+
+      // Supprimer du cache local immédiatement
+      if (media.url) {
+        imageCache.removeFromCache(media.url)
+        console.log('🗑️ Removed rejected photo from local cache')
+      }
+
       // Le WebSocket va mettre à jour le cache React Query automatiquement
-      // On laisse juste le composant se re-render avec les nouvelles données du cache
       console.log('✅ Media rejected, waiting for WebSocket update...')
     } catch (error) {
       console.error('Failed to reject media:', error)

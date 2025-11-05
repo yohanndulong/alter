@@ -248,6 +248,7 @@ export class MediaService {
 
   /**
    * Rejette un média avec contenu sensible
+   * Supprime les données binaires du serveur pour économiser l'espace
    */
   async rejectMedia(mediaId: string, userId: string): Promise<MessageMedia> {
     const media = await this.mediaRepository.findOne({
@@ -264,12 +265,14 @@ export class MediaService {
       throw new BadRequestException('Only receiver can reject media');
     }
 
+    // Marquer comme rejeté ET supprimer les données binaires
     await this.mediaRepository.update(mediaId, {
       receiverStatus: MediaReceiverStatus.REJECTED,
       receiverDecisionAt: new Date(),
+      fileData: null, // Supprimer les données binaires pour économiser l'espace
     });
 
-    this.logger.warn(`❌ Media rejected by receiver: ${mediaId}`);
+    this.logger.warn(`❌ Media rejected by receiver and data deleted: ${mediaId}`);
 
     return media;
   }
