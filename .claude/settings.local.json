@@ -21,8 +21,11 @@
       "Bash(npx cap sync:*)",
       "Bash(npm run dev:*)",
       "Bash(dir /b c:devalteralterapisrcmoduleschatmoderation*.ts)",
-      "Bash(nul)"
-    ],
+      "Bash(nul)",
+      "Bash(dir:*)",
+      "Bash(chmod:*)",
+      "Bash(git log:*)",
+   ],
     "deny": [],
     "ask": []
   }

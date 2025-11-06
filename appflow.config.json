@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "appId": "com.alterdating.alter",
+      "root": "app",
+      "dependencyInstallCommand": "npm install",
+      "webBuildCommand": "npm run build:web:main",
+      "iosBuildCommand": "npm run build:ios:main",
+      "androidBuildCommand": "npm run build:android:main"
+    }
+  ]
+}

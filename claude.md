@@ -557,4 +557,5 @@ Pour toute question ou problème :
 
 **Dernière mise à jour** : Janvier 2025
 **Version** : 1.0.1
-- memorize
+
+- ne fais pas de git
