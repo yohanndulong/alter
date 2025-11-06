@@ -4,8 +4,8 @@
       "appId": "93dba792",
       "root": "app",
       "dependencyInstallCommand": "npm install",
-      "webBuildCommand": "npm run build:web:main",
-      "iosBuildCommand": "npm run build:ios:main",
+      "webBuildCommand": "npm run build:ios:staging",
+      "iosBuildCommand": "npm run build:ios:staging",
       "androidBuildCommand": "npm run build:android:main"
     }
   ]
