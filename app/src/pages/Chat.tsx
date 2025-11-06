@@ -743,7 +743,13 @@ export const Chat: React.FC = () => {
         <ProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          profile={match.matchedUser}
+          profile={{
+            ...match.matchedUser,
+            compatibilityScoreGlobal: match.compatibilityScoreGlobal,
+            compatibilityScoreLove: match.compatibilityScoreLove,
+            compatibilityScoreFriendship: match.compatibilityScoreFriendship,
+            compatibilityScoreCarnal: match.compatibilityScoreCarnal,
+          }}
           showActions={false}
         />
       )}

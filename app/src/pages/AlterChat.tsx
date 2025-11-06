@@ -443,9 +443,7 @@ export const AlterChat: React.FC = () => {
                   <span className="alter-chat-profile-compact-percent">{profileState.completion || 0}%</span>
                 </button>
               )}
-              <div className="alter-chat-header-share">
-                <ShareButton variant="ghost" size="sm" />
-              </div>
+              <ShareButton />
               <div className="alter-chat-intention-selector" ref={intentionMenuRef}>
                 <button
                   className="alter-chat-intention-button"

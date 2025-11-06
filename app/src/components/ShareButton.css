@@ -1,7 +1,63 @@
-.share-button {
-  display: inline-flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
+/* Bouton icône circulaire */
+.share-button-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--color-text-primary);
+}
+
+.share-button-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.share-button-icon:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.share-button-icon:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+[data-theme='dark'] .share-button-icon {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .share-button-icon:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme='blue'] .share-button-icon {
+  background: rgba(94, 129, 172, 0.2);
+  border-color: rgba(94, 129, 172, 0.3);
+}
+
+[data-theme='blue'] .share-button-icon:hover:not(:disabled) {
+  background: rgba(94, 129, 172, 0.3);
+  border-color: rgba(94, 129, 172, 0.4);
+}
+
+.share-button-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .share-button__error {
@@ -11,6 +67,7 @@
   background-color: var(--color-error-50);
   border-radius: var(--radius-sm);
   text-align: center;
+  margin-top: var(--spacing-2);
 }
 
 /* Modal de prévisualisation */
@@ -71,20 +128,57 @@
   border: 1px solid rgba(94, 129, 172, 0.2);
 }
 
-.share-preview-header {
-  padding: var(--spacing-5);
-  border-bottom: 1px solid var(--color-border);
+.share-preview-close {
+  position: absolute;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: var(--spacing-2);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.share-preview-close:hover {
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--color-text-primary);
+  transform: scale(1.1);
+}
+
+[data-theme='dark'] .share-preview-close {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .share-preview-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.share-preview-header {
+  padding: var(--spacing-6);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-secondary-50) 100%);
 }
 
 [data-theme='dark'] .share-preview-header {
-  border-bottom-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(236, 72, 153, 0.15) 100%);
 }
 
 [data-theme='blue'] .share-preview-header {
-  border-bottom-color: rgba(94, 129, 172, 0.2);
+  background: linear-gradient(135deg, rgba(94, 129, 172, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+}
+
+.share-preview-icon {
+  flex-shrink: 0;
 }
 
 .share-preview-title {
@@ -94,26 +188,10 @@
   margin: 0;
 }
 
-.share-preview-close {
-  background: none;
-  border: none;
-  font-size: 32px;
-  line-height: 1;
+.share-preview-subtitle {
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
-}
-
-.share-preview-close:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text-primary);
+  margin: var(--spacing-1) 0 0 0;
 }
 
 .share-preview-content {
@@ -124,32 +202,76 @@
 }
 
 .share-preview-message {
-  font-size: var(--font-size-lg);
-  line-height: 1.6;
-  color: var(--color-text-primary);
-  background: var(--color-background);
+  display: flex;
+  gap: var(--spacing-3);
   padding: var(--spacing-5);
-  border-radius: var(--radius-lg);
-  border: 2px solid var(--color-primary-200);
-  white-space: pre-wrap;
-  word-wrap: break-word;
+  border-radius: var(--radius-xl);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.share-preview-message::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--color-primary-500) 0%, var(--color-secondary-500) 100%);
 }
 
 [data-theme='dark'] .share-preview-message {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--color-primary-400);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 [data-theme='blue'] .share-preview-message {
-  background: rgba(94, 129, 172, 0.1);
-  border-color: var(--color-primary-400);
+  background: rgba(94, 129, 172, 0.05);
+  border-color: rgba(94, 129, 172, 0.2);
+}
+
+.share-preview-message-icon {
+  font-size: var(--font-size-2xl);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.share-preview-message-text {
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  flex: 1;
 }
 
 .share-preview-hashtags {
-  font-size: var(--font-size-md);
-  color: var(--color-primary-500);
+  display: flex;
+  gap: var(--spacing-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.share-preview-hashtag {
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  text-align: center;
+  color: var(--color-primary-500);
+  background: var(--color-primary-50);
+  padding: var(--spacing-1) var(--spacing-3);
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .share-preview-hashtag {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--color-primary-400);
+}
+
+[data-theme='blue'] .share-preview-hashtag {
+  background: rgba(94, 129, 172, 0.15);
+  color: var(--color-primary-400);
 }
 
 .share-preview-actions {

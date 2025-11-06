@@ -60,7 +60,22 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   const { t } = useTranslation()
 
   const hasMultiScores = hasProfileEmbedding ? compatibilityScoreGlobal !== undefined : true
-  const totalContentPages = hasMultiScores && interests && interests.length > 0 ? 3 : 1
+
+  // Calculer le nombre de pages en fonction du contenu disponible
+  const hasBio = bio && bio.length > 0
+  const hasInterests = interests && interests.length > 0
+
+  let totalContentPages = 1
+  if (hasMultiScores) {
+    // Avec scores multiples : 3 pages (bio+intérêts, bio complète, scores)
+    totalContentPages = hasInterests ? 3 : 2
+  } else if (hasBio && hasInterests) {
+    // Sans scores mais avec bio et intérêts : 2 pages (bio+intérêts, bio complète)
+    totalContentPages = 2
+  } else {
+    // Seulement bio ou seulement intérêts : 1 page
+    totalContentPages = 1
+  }
 
   // Générer de faux pourcentages cohérents basés sur le nom
   const generateFakeScore = (seed: string, min: number = 60, max: number = 95): number => {
@@ -99,7 +114,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     navigate('/alter-chat')
   }
 
-  const nextImage = () => {
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
     // Chaque clic avance dans les images ET dans les pages de contenu en même temps
     const newImageIndex = (currentImageIndex + 1) % images.length
     const newContentPageIndex = (contentPageIndex + 1) % totalContentPages
@@ -108,7 +124,8 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
     setContentPageIndex(newContentPageIndex)
   }
 
-  const prevImage = () => {
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
     // Chaque clic recule dans les images ET dans les pages de contenu en même temps
     const newImageIndex = (currentImageIndex - 1 + images.length) % images.length
     const newContentPageIndex = (contentPageIndex - 1 + totalContentPages) % totalContentPages
@@ -153,10 +170,14 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
   // Mouse events
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     handleDragStart(e.clientX, e.clientY)
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      e.stopPropagation()
+    }
     handleDragMove(e.clientX, e.clientY)
   }
 
@@ -166,16 +187,21 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
 
   // Touch events
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation()
     const touch = e.touches[0]
     handleDragStart(touch.clientX, touch.clientY)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging) {
+      e.stopPropagation()
+    }
     const touch = e.touches[0]
     handleDragMove(touch.clientX, touch.clientY)
   }
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.stopPropagation()
     handleDragEnd()
   }
 
@@ -303,7 +329,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
           )}
         </div>
 
-        {hasMultiScores ? (
+        {totalContentPages > 1 ? (
           <>
             {contentPageIndex === 0 ? (
               <>
@@ -322,7 +348,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
               <>
                 {bio && <p className="profile-card__bio profile-card__bio--full">{bio}</p>}
               </>
-            ) : (
+            ) : hasMultiScores ? (
               <>
                 <div className="profile-card__compatibility-grid">
                   <div className="profile-card__compatibility-badge profile-card__compatibility-badge--global">
@@ -378,7 +404,7 @@ export const ProfileCard: React.FC<ProfileCardProps> = ({
                   </div>
                 )}
               </>
-            )}
+            ) : null}
           </>
         ) : (
           <>

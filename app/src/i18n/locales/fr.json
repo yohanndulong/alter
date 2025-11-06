@@ -332,7 +332,8 @@
     "errorSharing": "Erreur lors du partage",
     "errorCopy": "Erreur lors de la copie",
     "notSupported": "Le partage natif n'est pas supporté sur cet appareil. Utilisez le bouton \"Copier\" à la place.",
-    "previewTitle": "Aperçu de votre message",
+    "previewTitle": "Partager votre profil ALTER",
+    "previewSubtitle": "Généré par l'IA rien que pour vous",
     "copy": "Copier",
     "shareNow": "Partager"
   }

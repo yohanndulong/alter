@@ -264,7 +264,13 @@ export const Matches: React.FC = () => {
         <ProfileModal
           isOpen={true}
           onClose={handleCloseModal}
-          profile={selectedMatch.matchedUser}
+          profile={{
+            ...selectedMatch.matchedUser,
+            compatibilityScoreGlobal: selectedMatch.compatibilityScoreGlobal,
+            compatibilityScoreLove: selectedMatch.compatibilityScoreLove,
+            compatibilityScoreFriendship: selectedMatch.compatibilityScoreFriendship,
+            compatibilityScoreCarnal: selectedMatch.compatibilityScoreCarnal,
+          }}
           onLike={handleOpenChat}
           showActions={true}
         />

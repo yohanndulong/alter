@@ -49,6 +49,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       size="lg"
+      closeOnBackdropClick={true}
+      enableSwipeToClose={false}
     >
       <div className="profile-modal">
         <div className="profile-modal-card">
@@ -63,7 +65,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             compatibilityScoreLove={profile.compatibilityScoreLove}
             compatibilityScoreFriendship={profile.compatibilityScoreFriendship}
             compatibilityScoreCarnal={profile.compatibilityScoreCarnal}
-            disableSwipe={true}
+            disableSwipe={false}
             hasProfileEmbedding={hasProfileEmbedding}
           />
         </div>
