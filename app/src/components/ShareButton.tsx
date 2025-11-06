@@ -5,15 +5,9 @@ import { chatService } from '@/services/chat'
 import { Button } from './Button'
 import './ShareButton.css'
 
-export interface ShareButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
-  size?: 'sm' | 'md' | 'lg'
-}
+export interface ShareButtonProps {}
 
-export const ShareButton: React.FC<ShareButtonProps> = ({
-  variant = 'outline',
-  size = 'md'
-}) => {
+export const ShareButton: React.FC<ShareButtonProps> = () => {
   const { t } = useTranslation()
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
