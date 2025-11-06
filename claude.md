@@ -559,3 +559,4 @@ Pour toute question ou problème :
 **Version** : 1.0.1
 
 - ne fais pas de git
+- ne fais plus de git add, commit et push

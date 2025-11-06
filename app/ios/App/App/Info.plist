@@ -45,5 +45,9 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Alter needs your location to show you nearby matches and help you find people in your area.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Alter needs your location to show you nearby matches and update your location in the background for better match suggestions.</string>
 </dict>
 </plist>
