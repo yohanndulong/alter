@@ -23,6 +23,10 @@ end
 target 'App' do
   capacitor_pods
   # Add your Pods here
+
+  # Firebase SDK for App Distribution
+  pod 'Firebase/Analytics'
+  pod 'Firebase/Crashlytics'
 end
 
 post_install do |installer|

@@ -561,3 +561,4 @@ Pour toute question ou problème :
 - ne fais pas de git
 - ne fais plus de git add, commit et push
 - mets toutes les docs dans un répertoire /docs
+- evite de créer des docs à tout va
