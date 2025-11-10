@@ -41,6 +41,16 @@
   justify-content: center;
   padding: var(--spacing-4) 0;
   overflow: hidden;
+  position: relative;
+}
+
+.introduction__background-gradient {
+  position: absolute;
+  inset: -50%;
+  opacity: 0.15;
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .introduction__slide {
@@ -53,10 +63,33 @@
   padding: 0 var(--spacing-4);
   cursor: grab;
   user-select: none;
+  position: relative;
+  z-index: 1;
+  perspective: 1000px;
 }
 
 .introduction__slide:active {
   cursor: grabbing;
+}
+
+.introduction__particles {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.introduction__particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: -4px;
+  left: -4px;
 }
 
 .introduction__icon-container {
