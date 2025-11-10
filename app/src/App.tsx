@@ -13,6 +13,7 @@ import { Capacitor } from '@capacitor/core'
 import { queryClient } from './lib/queryClient'
 import { moderationService } from './services/moderation'
 import { alterChatStorage } from './utils/alterChatStorage'
+import { privacyScreenService } from './services/privacyScreen'
 
 import { Introduction } from './pages/Introduction'
 import { Login } from './pages/Login'
@@ -192,6 +193,13 @@ const AppRoutes: React.FC = () => {
     }).catch(error => {
       console.error('❌ Failed to preload NSFW model:', error)
     })
+  }, [])
+
+  // Désactiver la protection contre les captures d'écran au démarrage
+  // Elle sera activée uniquement sur la page Chat
+  useEffect(() => {
+    privacyScreenService.disable()
+    console.log('🔓 Privacy screen disabled globally - will be enabled only on Chat page')
   }, [])
 
   // Enable OTA updates only on native platforms
