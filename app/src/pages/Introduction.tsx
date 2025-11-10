@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, PanInfo } from 'framer-motion'
@@ -71,7 +71,7 @@ export const Introduction: React.FC = () => {
     navigate('/login')
   }
 
-  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const swipeThreshold = 50
 
     if (info.offset.x > swipeThreshold) {
