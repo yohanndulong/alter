@@ -7,5 +7,13 @@
     "splash": {
       "sources": ["icon.svg"]
     }
+  },
+  "ios": {
+    "icon": {
+      "sources": ["icon.svg"]
+    },
+    "splash": {
+      "sources": ["icon.svg"]
+    }
   }
 }
