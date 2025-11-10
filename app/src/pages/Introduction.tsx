@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, PanInfo } from 'framer-motion'
-import { Logo } from '@/components'
+import { Logo, NetworkAnimation } from '@/components'
 import './Introduction.css'
 
 interface Slide {
@@ -92,6 +92,10 @@ export const Introduction: React.FC = () => {
 
   return (
     <div className="introduction">
+      <div className="introduction__network-background">
+        <NetworkAnimation />
+      </div>
+
       <div className="introduction__header">
         <Logo size={40} />
         {currentSlide < slides.length - 1 && (
@@ -104,11 +108,17 @@ export const Introduction: React.FC = () => {
       <div className="introduction__content">
         {/* Background gradient animé */}
         <motion.div
+          key={`gradient-${currentSlide}`}
           className="introduction__background-gradient"
+          initial={{ opacity: 0 }}
           animate={{
             background: slides[currentSlide].gradient,
+            opacity: [0, 0.15, 0.15, 0]
           }}
-          transition={{ duration: 0.6, ease: "easeInOut" }}
+          transition={{
+            background: { duration: 0.6, ease: "easeInOut" },
+            opacity: { duration: 2.5, times: [0, 0.3, 0.7, 1], ease: "easeInOut" }
+          }}
         />
 
         <AnimatePresence mode="wait" custom={dragDirection}>

@@ -3,11 +3,23 @@
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
-  background: var(--color-background-primary);
+  background: var(--color-background);
   padding: var(--spacing-6);
   padding-top: calc(var(--spacing-6) + env(safe-area-inset-top));
   padding-bottom: calc(var(--spacing-6) + env(safe-area-inset-bottom));
   overflow: hidden;
+  position: relative;
+}
+
+.introduction__network-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
 }
 
 .introduction__header {
@@ -15,6 +27,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: var(--spacing-8);
+  position: relative;
+  z-index: 1;
 }
 
 .introduction__skip {
@@ -42,6 +56,7 @@
   padding: var(--spacing-4) 0;
   overflow: hidden;
   position: relative;
+  border-radius: 3%;
 }
 
 .introduction__background-gradient {
@@ -51,6 +66,7 @@
   filter: blur(80px);
   z-index: 0;
   pointer-events: none;
+  
 }
 
 .introduction__slide {
@@ -125,18 +141,27 @@
 }
 
 .introduction__title {
+  font-family: var(--font-family-heading);
   font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   color: var(--color-text-primary);
-  margin: 0 0 var(--spacing-4) 0;
+  margin: 0 0 var(--spacing-6) 0;
   line-height: var(--line-height-tight);
+  letter-spacing: -0.03em;
 }
 
 .introduction__description {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   color: var(--color-text-secondary);
   line-height: var(--line-height-relaxed);
   margin: 0;
+  padding: var(--spacing-5) var(--spacing-6);
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-2xl);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--color-background-tertiary);
+  max-width: 420px;
 }
 
 .introduction__footer {
@@ -144,6 +169,8 @@
   flex-direction: column;
   gap: var(--spacing-6);
   margin-top: var(--spacing-6);
+  position: relative;
+  z-index: 1;
 }
 
 .introduction__dots {
@@ -274,7 +301,8 @@
   }
 
   .introduction__description {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
+    padding: var(--spacing-4) var(--spacing-5);
   }
 
   .introduction__arrow {
@@ -293,6 +321,12 @@
 @media (prefers-color-scheme: dark) {
   .introduction__icon-container {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .introduction__description {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   }
 
   .introduction__button--primary {

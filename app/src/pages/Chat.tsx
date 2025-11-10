@@ -49,8 +49,9 @@ export const Chat: React.FC = () => {
 
   const conversationQuality = match?.conversationQualityScore || 75
 
-  // Activer la protection contre les captures d'écran
-  usePrivacyScreen(true)
+  // 🔒 Protection contre les captures d'écran (désactivée pour les admins)
+  const enableScreenshotProtection = !user?.isAdmin
+  usePrivacyScreen(enableScreenshotProtection)
 
   // Gérer le bouton retour - retourner à la liste des matches
   useBackButtonNavigation('/matches')
