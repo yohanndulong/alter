@@ -1,8 +1,8 @@
 {
   "nav": {
     "alter": "Alter",
-    "discover": "Discover",
-    "matches": "Matches",
+    "discover": "Matches",
+    "matches": "Messages",
     "profile": "Profile"
   },
   "common": {
@@ -75,6 +75,20 @@
     "activeUsers": "Active users",
     "satisfactionRate": "Satisfaction rate",
     "couplesFormed": "Couples formed"
+  },
+  "intro": {
+    "skip": "Skip",
+    "next": "Next",
+    "previous": "Previous",
+    "getStarted": "Start the journey",
+    "slide1Title": "Welcome to ALTER",
+    "slide1Description": "ALTER is not a typical swipe app. It's your AI relationship coach helping you find authentic and compatible connections.",
+    "slide2Title": "Conversation, not forms",
+    "slide2Description": "Alter, your AI agent, gets to know you through a real conversation. No checkboxes: explore your personality, values and expectations in depth.",
+    "slide3Title": "Advanced psychological matching",
+    "slide3Description": "Our AI analyzes your compatibility across 4 dimensions: Global, Love, Friendship and Carnal. Every match is explained so you understand why you're compatible.",
+    "slide4Title": "Quality connections",
+    "slide4Description": "Limited active conversations, real-time quality analysis, toxicity protection. ALTER prioritizes quality over quantity."
   },
   "onboarding": {
     "welcome": "Welcome to Alter",

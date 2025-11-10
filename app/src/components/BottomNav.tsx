@@ -47,8 +47,8 @@ export const BottomNav: React.FC = () => {
     },
   ]
 
-  // Don't show navigation on login, verify-code or onboarding pages
-  if (location.pathname === '/login' || location.pathname === '/verify-code' || location.pathname === '/onboarding') {
+  // Don't show navigation on introduction, login, verify-code or onboarding pages
+  if (location.pathname === '/introduction' || location.pathname === '/login' || location.pathname === '/verify-code' || location.pathname === '/onboarding') {
     return null
   }
 

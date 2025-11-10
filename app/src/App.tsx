@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
@@ -12,7 +12,9 @@ import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
 import { queryClient } from './lib/queryClient'
 import { moderationService } from './services/moderation'
+import { alterChatStorage } from './utils/alterChatStorage'
 
+import { Introduction } from './pages/Introduction'
 import { Login } from './pages/Login'
 import { VerifyCode } from './pages/VerifyCode'
 import { Onboarding } from './pages/Onboarding'
@@ -89,8 +91,20 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuth()
+  const [hasAlterMessages, setHasAlterMessages] = useState<boolean | null>(null)
 
-  if (isLoading) {
+  useEffect(() => {
+    const checkAlterMessages = async () => {
+      const messages = await alterChatStorage.loadMessages()
+      setHasAlterMessages(messages.length > 0)
+    }
+
+    if (isAuthenticated && user?.onboardingComplete) {
+      checkAlterMessages()
+    }
+  }, [isAuthenticated, user?.onboardingComplete])
+
+  if (isLoading || (isAuthenticated && user?.onboardingComplete && hasAlterMessages === null)) {
     return (
       <div
         style={{
@@ -109,8 +123,61 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     return <>{children}</>
   }
 
-  // Redirect authenticated users to onboarding if not completed, otherwise to discover
-  const redirectTo = user && !user.onboardingComplete ? '/onboarding' : '/discover'
+  // Redirect authenticated users to onboarding if not completed
+  if (user && !user.onboardingComplete) {
+    return <Navigate to="/onboarding" />
+  }
+
+  // Redirect to alter-chat if user hasn't chatted with Alter yet
+  const redirectTo = !hasAlterMessages ? '/alter-chat' : '/discover'
+  return <Navigate to={redirectTo} />
+}
+
+const HomeRedirect: React.FC = () => {
+  const { isAuthenticated, isLoading, user } = useAuth()
+  const [hasAlterMessages, setHasAlterMessages] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const checkAlterMessages = async () => {
+      const messages = await alterChatStorage.loadMessages()
+      setHasAlterMessages(messages.length > 0)
+    }
+
+    if (isAuthenticated && user?.onboardingComplete) {
+      checkAlterMessages()
+    }
+  }, [isAuthenticated, user?.onboardingComplete])
+
+  if (isLoading || (isAuthenticated && user?.onboardingComplete && hasAlterMessages === null)) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+        }}
+      >
+        Loading...
+      </div>
+    )
+  }
+
+  // Check if user has seen the introduction
+  const hasSeenIntro = localStorage.getItem('intro_completed') === 'true'
+
+  if (!isAuthenticated) {
+    // Redirect to intro if not seen, otherwise to login
+    return <Navigate to={hasSeenIntro ? "/login" : "/introduction"} />
+  }
+
+  // Redirect to onboarding if not completed
+  if (user && !user.onboardingComplete) {
+    return <Navigate to="/onboarding" />
+  }
+
+  // Redirect to alter-chat if user hasn't chatted with Alter yet
+  const redirectTo = !hasAlterMessages ? '/alter-chat' : '/discover'
   return <Navigate to={redirectTo} />
 }
 
@@ -139,6 +206,7 @@ const AppRoutes: React.FC = () => {
     <>
       <NetworkStatus />
       <Routes>
+        <Route path="/introduction" element={<Introduction />} />
         <Route
           path="/login"
           element={
@@ -244,7 +312,7 @@ const AppRoutes: React.FC = () => {
           }
         />
         <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/" element={<Navigate to="/discover" />} />
+        <Route path="/" element={<HomeRedirect />} />
       </Routes>
       <BottomNav />
       <ToastContainer toasts={toasts} onClose={removeToast} />

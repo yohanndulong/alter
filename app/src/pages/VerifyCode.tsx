@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button, Input, Logo } from '@/components'
 import { useToast } from '@/hooks'
 import { api } from '@/services/api'
+import { alterChatStorage } from '@/utils/alterChatStorage'
 import './Auth.css'
 
 export const VerifyCode: React.FC = () => {
@@ -48,7 +49,13 @@ export const VerifyCode: React.FC = () => {
       await login(email, code)
       success('Connexion réussie')
       localStorage.removeItem('verifyEmail')
-      navigate('/discover')
+
+      // Vérifier si l'utilisateur a déjà discuté avec Alter
+      const messages = await alterChatStorage.loadMessages()
+      const hasAlterMessages = messages.length > 0
+
+      // Rediriger vers alter-chat si pas de messages, sinon vers discover
+      navigate(hasAlterMessages ? '/discover' : '/alter-chat')
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Code invalide')
     } finally {

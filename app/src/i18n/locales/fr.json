@@ -1,7 +1,7 @@
 {
   "nav": {
     "alter": "Alter",
-    "discover": "Découvrir",
+    "discover": "Compatibilités",
     "matches": "Matchs",
     "profile": "Profil"
   },
@@ -75,6 +75,20 @@
     "activeUsers": "Utilisateurs actifs",
     "satisfactionRate": "Taux de satisfaction",
     "couplesFormed": "Couples formés"
+  },
+  "intro": {
+    "skip": "Passer",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "getStarted": "Commencer l'aventure",
+    "slide1Title": "Bienvenue sur ALTER",
+    "slide1Description": "ALTER n'est pas une app de swipe classique. C'est votre coach relationnel IA qui vous aide à trouver des connexions authentiques et compatibles.",
+    "slide2Title": "Conversation, pas formulaire",
+    "slide2Description": "Alter, votre agent IA, apprend à vous connaître à travers une vraie conversation. Exit les cases à cocher : explorez votre personnalité, vos valeurs et vos attentes en profondeur.",
+    "slide3Title": "Matching psychologique avancé",
+    "slide3Description": "Notre IA analyse votre compatibilité sur 4 dimensions : Global, Amour, Amitié et Charnel. Chaque match est expliqué pour que vous compreniez pourquoi vous êtes compatibles.",
+    "slide4Title": "Connexions de qualité",
+    "slide4Description": "Limite de conversations actives, analyse de qualité en temps réel, protection contre la toxicité. ALTER privilégie la qualité sur la quantité."
   },
   "onboarding": {
     "welcome": "Bienvenue sur Alter",
