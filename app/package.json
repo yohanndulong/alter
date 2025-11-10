@@ -18,7 +18,7 @@
     "build:web:staging": "tsc && vite build --mode staging && node scripts/build-ota.js",
     "build:web:main": "tsc && vite build --mode main && node scripts/build-ota.js",
     "build:ios:dev": "tsc && vite build && npx cap sync ios",
-    "build:ios:staging": "tsc && vite build --mode staging && npm run version:increment:ios && npx cap sync ios",
+    "build:ios:staging": "tsc && vite build --mode staging && npx cap sync ios",
     "build:ios:main": "tsc && vite build --mode main && npx cap sync ios",
     "build:android:dev": "tsc && vite build && npx cap sync android",
     "build:android:staging": "tsc && vite build --mode staging && npx cap sync android",
