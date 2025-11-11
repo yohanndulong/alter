@@ -49,5 +49,13 @@
 	<string>Alter needs your location to show you nearby matches and help you find people in your area.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Alter needs your location to show you nearby matches and update your location in the background for better match suggestions.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Alter needs access to your camera to take photos for your profile and send photos in conversations.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Alter needs access to your photo library to select photos for your profile and share photos in conversations.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Alter needs permission to save photos to your photo library.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Alter needs access to your microphone to send voice messages in conversations.</string>
 </dict>
 </plist>

@@ -186,7 +186,24 @@ export class LlmService {
       temperature: 0.5,
     });
 
-    return cleanAndParseJSON(response.content, this.logger, 'compatibility analysis');
+    const parsed = cleanAndParseJSON(response.content, this.logger, 'compatibility analysis');
+
+    // Transformer la réponse du LLM pour extraire les scores
+    // Le LLM retourne parfois {"score": 68, "commentaire": "..."} au lieu de juste 68
+    // Et utilise des noms de champs différents (personnalite, identite, criteres_recherche)
+    const extractScore = (field: any): number => {
+      if (typeof field === 'number') return field;
+      if (typeof field === 'object' && field?.score) return field.score;
+      return 50; // Valeur par défaut
+    };
+
+    return {
+      global: extractScore(parsed.global),
+      love: extractScore(parsed.love || parsed.personnalite),
+      friendship: extractScore(parsed.friendship || parsed.identite),
+      carnal: extractScore(parsed.carnal || parsed.criteres_recherche),
+      insight: parsed.commentaire || parsed.insight || parsed.global?.verdict || parsed.global?.commentaire || '',
+    };
   }
 
   /**
