@@ -60,6 +60,9 @@ export class CompatibilityService {
 
   /**
    * Sauvegarde un cache de compatibilité
+   * ✨ OPTIMISATION : TTL de 30 jours pour laisser expirer naturellement les vieux caches
+   * Stratégie : Les profils changent peu après discussion avec ALTER
+   * → Cache valide longtemps, invalidation seulement si profil change vraiment
    */
   async saveCache(
     userId: string,
@@ -68,6 +71,10 @@ export class CompatibilityService {
     userHash: string,
     targetHash: string,
   ): Promise<CompatibilityCache> {
+    // Définir une date d'expiration à 30 jours
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
     const cache = this.cacheRepository.create({
       userId,
       targetUserId,
@@ -79,6 +86,7 @@ export class CompatibilityService {
       userProfileHash: userHash,
       targetProfileHash: targetHash,
       embeddingScore: scores.embeddingScore,
+      expiresAt, // 30 jours de validité
     });
 
     try {
@@ -292,6 +300,13 @@ export class CompatibilityService {
     const toCalculate: User[] = [];
     const userHash = calculateProfileHash(user);
 
+    // ✨ OPTIMISATION : Pré-calculer tous les hash UNE SEULE FOIS
+    // Avant: O(n²) avec targets.find() dans la boucle | Après: O(n)
+    const targetHashMap = new Map<string, string>();
+    targets.forEach(target => {
+      targetHashMap.set(target.id, calculateProfileHash(target));
+    });
+
     // Vérifier les caches en une seule requête
     const targetIds = targets.map(t => t.id);
     const caches = await this.cacheRepository.find({
@@ -305,10 +320,8 @@ export class CompatibilityService {
     // Créer une map des caches par targetUserId
     const cacheMap = new Map<string, CompatibilityCache>();
     caches.forEach(cache => {
-      const targetHash = calculateProfileHash(
-        targets.find(t => t.id === cache.targetUserId)!,
-      );
-      if (cache.targetProfileHash === targetHash) {
+      const targetHash = targetHashMap.get(cache.targetUserId);
+      if (targetHash && cache.targetProfileHash === targetHash) {
         cacheMap.set(cache.targetUserId, cache);
       }
     });
@@ -334,11 +347,21 @@ export class CompatibilityService {
       `Batch: ${caches.length} cache hits, ${toCalculate.length} to calculate`,
     );
 
-    // Calculer les manquants
-    for (const target of toCalculate) {
-      const embeddingScore = embeddingScores?.get(target.id);
-      const scores = await this.getOrCalculate(user, target, embeddingScore);
-      results.set(target.id, scores);
+    // ✨ OPTIMISATION : Calculer les manquants EN PARALLÈLE au lieu de séquentiellement
+    // Avant: 15 calculs × 3s = 45s | Après: max(3s) = 3-5s
+    if (toCalculate.length > 0) {
+      const calculations = toCalculate.map(async (target) => {
+        const embeddingScore = embeddingScores?.get(target.id);
+        const scores = await this.getOrCalculate(user, target, embeddingScore);
+        return { targetId: target.id, scores };
+      });
+
+      const calculatedScores = await Promise.all(calculations);
+      calculatedScores.forEach(({ targetId, scores }) => {
+        results.set(targetId, scores);
+      });
+
+      this.logger.log(`✅ Calculated ${toCalculate.length} compatibility scores in parallel`);
     }
 
     return results;

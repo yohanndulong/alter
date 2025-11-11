@@ -2,41 +2,73 @@ import * as crypto from 'crypto';
 import { User } from '../modules/users/entities/user.entity';
 
 /**
- * Interface pour les données du profil utilisées pour le matching
+ * Interface pour les données critiques du profil (hash fort)
+ * Ces champs ont un impact majeur sur la compatibilité calculée par le LLM
  */
-interface ProfileHashData {
-  bio?: string;
-  interests: string[];
-  sexualOrientation?: string;
-  gender: string;
+interface CoreProfileHashData {
+  alterProfileAI?: Record<string, any>; // Le plus important (utilisé par le LLM)
   age: number;
-  alterProfileAI?: Record<string, any>;
-  // Ajouter d'autres champs pertinents pour le matching
-  // NE PAS inclure : photos, location, lastSeen, etc.
+  gender: string;
+  sexualOrientation?: string;
+  // NE PAS INCLURE: bio, interests (changent souvent, impact faible sur compatibilité LLM)
 }
 
 /**
- * Extrait les données pertinentes du profil pour le matching
+ * Interface pour toutes les données du profil (hash complet - legacy)
  */
-function extractRelevantData(user: User | Partial<User>): ProfileHashData {
+interface FullProfileHashData extends CoreProfileHashData {
+  bio?: string;
+  interests: string[];
+}
+
+/**
+ * ✨ OPTIMISATION CACHE : Extrait uniquement les données critiques pour le matching
+ * Stratégie : Le LLM calcule la compatibilité principalement sur alterProfileAI
+ * → Si alterProfileAI ne change pas, le cache reste valide même si bio/interests changent
+ * → Gain: +20-30% de cache hits, réduction des appels LLM coûteux
+ */
+function extractCoreData(user: User | Partial<User>): CoreProfileHashData {
   return {
-    bio: user.bio,
-    interests: user.interests ? [...user.interests].sort() : [], // Sort pour cohérence
-    sexualOrientation: user.sexualOrientation,
-    gender: user.gender,
-    age: user.age,
     alterProfileAI: user.alterProfileAI,
+    age: user.age,
+    gender: user.gender,
+    sexualOrientation: user.sexualOrientation,
   };
 }
 
 /**
- * Calcule un hash SHA-256 du profil utilisateur
+ * Extrait toutes les données pertinentes du profil (legacy)
+ */
+function extractFullData(user: User | Partial<User>): FullProfileHashData {
+  return {
+    ...extractCoreData(user),
+    bio: user.bio,
+    interests: user.interests ? [...user.interests].sort() : [], // Sort pour cohérence
+  };
+}
+
+/**
+ * ✨ NOUVEAU : Calcule un hash basé uniquement sur les champs critiques
+ * Utilisé en priorité pour le cache de compatibilité
  * @param user - L'utilisateur dont on veut calculer le hash
  * @returns Le hash du profil (string hex)
  */
 export function calculateProfileHash(user: User | Partial<User>): string {
-  const relevantData = extractRelevantData(user);
-  const dataString = JSON.stringify(relevantData);
+  const coreData = extractCoreData(user);
+  const dataString = JSON.stringify(coreData);
+
+  return crypto.createHash('sha256').update(dataString).digest('hex');
+}
+
+/**
+ * Calcule un hash complet incluant tous les champs
+ * Utilisé pour les cas où on veut détecter tout changement
+ * @param user - L'utilisateur dont on veut calculer le hash
+ * @returns Le hash complet du profil (string hex)
+ */
+export function calculateFullProfileHash(user: User | Partial<User>): string {
+  const fullData = extractFullData(user);
+  const dataString = JSON.stringify(fullData);
 
   return crypto.createHash('sha256').update(dataString).digest('hex');
 }

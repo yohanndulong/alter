@@ -86,9 +86,6 @@ export class MatchingService {
     this.logger.log(`Excluded IDs: ${excludedIds.length} users (${passedIds.length} passed, ${matchedIds.length} matched, +1 self)`);
     this.logger.log(`Liked IDs (will be marked with isLiked flag): ${likedIds.length} users`);
 
-    // Récupérer tous les utilisateurs pour logguer les décisions
-    const allUsers = await this.userRepository.find();
-
     // Normaliser les genres de préférence une seule fois
     const normalizedGenders = currentUser.preferenceGenders?.map(g => {
       const genderStr = String(g).toLowerCase();
@@ -97,65 +94,6 @@ export class MatchingService {
       if (genderStr === 'autre' || genderStr === 'other') return 'other';
       return g;
     }) || [];
-
-    // Logger les décisions pour chaque utilisateur
-    this.logger.log(`\n--- Analyzing ${allUsers.length} potential profiles ---`);
-    for (const user of allUsers) {
-      const reasons: string[] = [];
-      let accepted = true;
-
-      // Check 1: Excluded IDs
-      if (excludedIds.includes(user.id)) {
-        accepted = false;
-        if (user.id === currentUser.id) {
-          reasons.push('❌ Self (same user)');
-        } else if (likedIds.includes(user.id)) {
-          reasons.push('❌ Already liked');
-        } else if (passedIds.includes(user.id)) {
-          reasons.push('❌ Already passed');
-        } else if (matchedIds.includes(user.id)) {
-          reasons.push('❌ Already matched');
-        }
-      }
-
-      // Check 2: Onboarding complete
-      if (accepted && !user.onboardingComplete) {
-        accepted = false;
-        reasons.push('❌ Onboarding not complete');
-      }
-
-      // Check 3: Profile embedding
-      if (accepted && !user.profileEmbedding) {
-        accepted = false;
-        reasons.push('❌ No profile embedding');
-      }
-
-      // Check 4: Age preference
-      if (accepted && currentUser.preferenceAgeMin && currentUser.preferenceAgeMax) {
-        if (user.age < currentUser.preferenceAgeMin || user.age > currentUser.preferenceAgeMax) {
-          accepted = false;
-          reasons.push(`❌ Age ${user.age} not in range ${currentUser.preferenceAgeMin}-${currentUser.preferenceAgeMax}`);
-        }
-      }
-
-      // Check 5: Gender preference
-      if (accepted && normalizedGenders.length > 0) {
-        const userGenderNormalized = String(user.gender).toLowerCase();
-        const matchesGender = normalizedGenders.some(g =>
-          String(g).toLowerCase() === userGenderNormalized
-        );
-        if (!matchesGender) {
-          accepted = false;
-          reasons.push(`❌ Gender '${user.gender}' not in preferences [${normalizedGenders.join(', ')}]`);
-        }
-      }
-
-      if (accepted) {
-        reasons.push('✅ ACCEPTED - All filters passed');
-      }
-
-      this.logger.log(`User ${user.id} (${user.name}, ${user.age}, ${user.gender}): ${reasons.join(', ')}`);
-    }
 
     // Requête de base avec filtres de préférence
     const query = this.userRepository.createQueryBuilder('user')
@@ -269,9 +207,6 @@ export class MatchingService {
     this.logger.log(`Excluded IDs: ${excludedIds.length} users (${passedIds.length} passed, ${matchedIds.length} matched, +1 self)`);
     this.logger.log(`Liked IDs (will be marked with isLiked flag): ${likedIds.length} users`);
 
-    // Récupérer tous les utilisateurs pour logguer les décisions
-    const allUsers = await this.userRepository.find();
-
     // Normaliser les genres de préférence une seule fois
     const normalizedGenders = currentUser.preferenceGenders?.map(g => {
       const genderStr = String(g).toLowerCase();
@@ -280,59 +215,6 @@ export class MatchingService {
       if (genderStr === 'autre' || genderStr === 'other') return 'other';
       return g;
     }) || [];
-
-    // Logger les décisions pour chaque utilisateur
-    this.logger.log(`\n--- Analyzing ${allUsers.length} potential profiles ---`);
-    for (const user of allUsers) {
-      const reasons: string[] = [];
-      let accepted = true;
-
-      // Check 1: Excluded IDs
-      if (excludedIds.includes(user.id)) {
-        accepted = false;
-        if (user.id === currentUser.id) {
-          reasons.push('❌ Self (same user)');
-        } else if (likedIds.includes(user.id)) {
-          reasons.push('❌ Already liked');
-        } else if (passedIds.includes(user.id)) {
-          reasons.push('❌ Already passed');
-        } else if (matchedIds.includes(user.id)) {
-          reasons.push('❌ Already matched');
-        }
-      }
-
-      // Check 2: Onboarding complete
-      if (accepted && !user.onboardingComplete) {
-        accepted = false;
-        reasons.push('❌ Onboarding not complete');
-      }
-
-      // Check 3: Age preference
-      if (accepted && currentUser.preferenceAgeMin && currentUser.preferenceAgeMax) {
-        if (user.age < currentUser.preferenceAgeMin || user.age > currentUser.preferenceAgeMax) {
-          accepted = false;
-          reasons.push(`❌ Age ${user.age} not in range ${currentUser.preferenceAgeMin}-${currentUser.preferenceAgeMax}`);
-        }
-      }
-
-      // Check 4: Gender preference
-      if (accepted && normalizedGenders.length > 0) {
-        const userGenderNormalized = String(user.gender).toLowerCase();
-        const matchesGender = normalizedGenders.some(g =>
-          String(g).toLowerCase() === userGenderNormalized
-        );
-        if (!matchesGender) {
-          accepted = false;
-          reasons.push(`❌ Gender '${user.gender}' not in preferences [${normalizedGenders.join(', ')}]`);
-        }
-      }
-
-      if (accepted) {
-        reasons.push('✅ ACCEPTED - All filters passed');
-      }
-
-      this.logger.log(`User ${user.id} (${user.name}, ${user.age}, ${user.gender}): ${reasons.join(', ')}`);
-    }
 
     const query = this.userRepository.createQueryBuilder('user')
       .leftJoinAndSelect('user.photos', 'photos')
