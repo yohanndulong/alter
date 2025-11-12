@@ -3,11 +3,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { FcmToken } from './entities/fcm-token.entity';
 import * as admin from 'firebase-admin';
+import * as apn from 'apn';
 import { RegisterTokenDto } from './dto/register-token.dto';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
   private readonly logger = new Logger(NotificationsService.name);
+  private apnProvider: apn.Provider | null = null;
 
   constructor(
     @InjectRepository(FcmToken)
@@ -15,32 +17,59 @@ export class NotificationsService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    // Initialiser Firebase Admin SDK
-    // IMPORTANT: La variable d'environnement doit contenir le JSON complet
+    // Initialiser Firebase Admin SDK pour Android
     try {
       if (!admin.apps.length) {
         const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
 
         if (serviceAccountJson) {
           try {
-            // Parser le JSON depuis la variable d'environnement
             const serviceAccount = JSON.parse(serviceAccountJson);
-
             admin.initializeApp({
               credential: admin.credential.cert(serviceAccount),
             });
-            this.logger.log('✅ Firebase Admin SDK initialisé');
+            this.logger.log('✅ Firebase Admin SDK initialisé (Android)');
           } catch (parseError) {
-            this.logger.error('❌ Erreur lors du parsing du JSON Firebase:', parseError);
-            this.logger.warn('⚠️ Vérifiez que FIREBASE_SERVICE_ACCOUNT contient un JSON valide');
+            this.logger.error('❌ Erreur parsing Firebase JSON:', parseError);
+            this.logger.warn('⚠️ Vérifiez FIREBASE_SERVICE_ACCOUNT');
           }
         } else {
-          this.logger.warn('⚠️ FIREBASE_SERVICE_ACCOUNT non défini - Les notifications push ne fonctionneront pas');
-          this.logger.warn('💡 Ajoutez le contenu de google-services.json dans la variable d\'environnement FIREBASE_SERVICE_ACCOUNT');
+          this.logger.warn('⚠️ FIREBASE_SERVICE_ACCOUNT non défini - Notifications Android désactivées');
         }
       }
     } catch (error) {
-      this.logger.error('❌ Erreur lors de l\'initialisation de Firebase Admin SDK:', error);
+      this.logger.error('❌ Erreur initialisation Firebase:', error);
+    }
+
+    // Initialiser APNs pour iOS
+    try {
+      const apnsKey = process.env.APNS_KEY; // Contenu du fichier .p8
+      const apnsKeyId = process.env.APNS_KEY_ID;
+      const apnsTeamId = process.env.APNS_TEAM_ID;
+      const apnsBundleId = process.env.APNS_BUNDLE_ID || 'com.alterdating.alter';
+      const apnsProduction = process.env.APNS_PRODUCTION === 'true';
+
+      if (apnsKey && apnsKeyId && apnsTeamId) {
+        // Nettoyer la clé (supprimer les espaces inutiles, garder les retours à la ligne)
+        const cleanedKey = apnsKey.trim();
+
+        this.apnProvider = new apn.Provider({
+          token: {
+            key: cleanedKey, // Contenu direct du .p8
+            keyId: apnsKeyId,
+            teamId: apnsTeamId,
+          },
+          production: apnsProduction,
+        });
+        this.logger.log(`✅ APNs initialisé (iOS) - ${apnsProduction ? 'Production' : 'Development'}`);
+        this.logger.log(`   Bundle ID: ${apnsBundleId}`);
+        this.logger.log(`   Key ID: ${apnsKeyId}`);
+      } else {
+        this.logger.warn('⚠️ Configuration APNs incomplète - Notifications iOS désactivées');
+        this.logger.warn('💡 Variables requises: APNS_KEY (contenu .p8), APNS_KEY_ID, APNS_TEAM_ID');
+      }
+    } catch (error) {
+      this.logger.error('❌ Erreur initialisation APNs:', error);
     }
   }
 
@@ -96,6 +125,14 @@ export class NotificationsService implements OnModuleInit {
   }
 
   /**
+   * Détecte si un token est iOS (APNs) ou Android (FCM)
+   */
+  private isApnsToken(token: string): boolean {
+    // Token APNs = 64 caractères hexadécimaux
+    return /^[0-9A-Fa-f]{64}$/.test(token);
+  }
+
+  /**
    * Envoie une notification push à un utilisateur
    */
   async sendNotificationToUser(
@@ -120,64 +157,107 @@ export class NotificationsService implements OnModuleInit {
       });
 
       if (tokens.length === 0) {
-        this.logger.warn(`⚠️ Aucun token FCM actif pour l'utilisateur ${userId}`);
+        this.logger.warn(`⚠️ Aucun token actif pour l'utilisateur ${userId}`);
         this.logger.log(`========== FIN NOTIFICATION (AUCUN TOKEN) ==========\n`);
         return;
       }
 
-      this.logger.log(`📱 ${tokens.length} token(s) FCM trouvé(s)`);
-      tokens.forEach((token, index) => {
-        this.logger.log(`  Token ${index + 1}: ${token.token.substring(0, 20)}... (${token.platform})`);
-      });
+      this.logger.log(`📱 ${tokens.length} token(s) trouvé(s)`);
 
-      // Préparer le message
-      const message = {
-        notification: {
-          title,
-          body,
-        },
-        data: data || {},
-        tokens: tokens.map(t => t.token),
-      };
+      // Séparer les tokens iOS et Android
+      const iosTokens = tokens.filter(t => t.platform === 'ios' || this.isApnsToken(t.token));
+      const androidTokens = tokens.filter(t => t.platform === 'android' && !this.isApnsToken(t.token));
 
-      // Envoyer la notification
-      if (admin.apps.length > 0) {
-        const response = await admin.messaging().sendEachForMulticast(message);
+      let successCount = 0;
+      let failureCount = 0;
+      const failedTokens: string[] = [];
 
-        this.logger.log(`✅ Notification envoyée à ${response.successCount}/${tokens.length} appareils`);
+      // Envoyer aux tokens iOS via APNs
+      if (iosTokens.length > 0) {
+        this.logger.log(`🍎 ${iosTokens.length} token(s) iOS`);
 
-        if (response.successCount > 0) {
-          this.logger.log(`🎉 ${response.successCount} notification(s) délivrée(s) avec succès`);
+        if (this.apnProvider) {
+          for (const tokenData of iosTokens) {
+            try {
+              const notification = new apn.Notification();
+              notification.alert = {
+                title,
+                body,
+              };
+              notification.sound = 'default';
+              notification.badge = 1;
+              notification.topic = process.env.APNS_BUNDLE_ID || 'com.alterdating.alter';
+              notification.payload = data || {};
+
+              const result = await this.apnProvider.send(notification, tokenData.token);
+
+              if (result.sent.length > 0) {
+                this.logger.log(`  ✅ iOS token ${tokenData.token.substring(0, 20)}... envoyé`);
+                successCount++;
+              }
+
+              if (result.failed.length > 0) {
+                const failure = result.failed[0];
+                this.logger.error(`  ❌ iOS token ${tokenData.token.substring(0, 20)}... échoué: ${failure.response?.reason || 'Unknown'}`);
+                failedTokens.push(tokenData.token);
+                failureCount++;
+              }
+            } catch (error) {
+              this.logger.error(`  ❌ Erreur envoi iOS token ${tokenData.token.substring(0, 20)}:`, error.message);
+              failedTokens.push(tokenData.token);
+              failureCount++;
+            }
+          }
+        } else {
+          this.logger.warn('⚠️ APNs non initialisé - Tokens iOS ignorés');
+          failureCount += iosTokens.length;
         }
+      }
 
-        // Désactiver les tokens invalides
-        if (response.failureCount > 0) {
-          this.logger.warn(`❌ ${response.failureCount} notification(s) échouée(s)`);
+      // Envoyer aux tokens Android via Firebase
+      if (androidTokens.length > 0) {
+        this.logger.log(`🤖 ${androidTokens.length} token(s) Android`);
 
-          const failedTokens: string[] = [];
+        if (admin.apps.length > 0) {
+          const message = {
+            notification: { title, body },
+            data: data || {},
+            tokens: androidTokens.map(t => t.token),
+          };
+
+          const response = await admin.messaging().sendEachForMulticast(message);
+
+          successCount += response.successCount;
+          failureCount += response.failureCount;
+
           response.responses.forEach((resp, idx) => {
             if (!resp.success) {
               const errorCode = resp.error?.code || 'unknown';
-              const errorMessage = resp.error?.message || 'No error message';
-              this.logger.error(`  ❌ Token ${idx + 1} (${tokens[idx].platform}): ${errorCode} - ${errorMessage}`);
-              failedTokens.push(tokens[idx].token);
+              this.logger.error(`  ❌ Android token ${androidTokens[idx].token.substring(0, 20)}...: ${errorCode}`);
+              failedTokens.push(androidTokens[idx].token);
+            } else {
+              this.logger.log(`  ✅ Android token ${androidTokens[idx].token.substring(0, 20)}... envoyé`);
             }
           });
-
-          if (failedTokens.length > 0) {
-            await this.fcmTokenRepository.update(
-              { token: In(failedTokens) },
-              { isActive: false },
-            );
-            this.logger.warn(`🗑️ ${failedTokens.length} tokens invalides désactivés`);
-          }
+        } else {
+          this.logger.warn('⚠️ Firebase non initialisé - Tokens Android ignorés');
+          failureCount += androidTokens.length;
         }
-
-        this.logger.log(`========== FIN NOTIFICATION (SUCCÈS) ==========\n`);
-      } else {
-        this.logger.warn('⚠️ Firebase Admin SDK non initialisé - Impossible d\'envoyer la notification');
-        this.logger.log(`========== FIN NOTIFICATION (SDK NON INITIALISÉ) ==========\n`);
       }
+
+      // Rapport final
+      this.logger.log(`✅ Notification envoyée à ${successCount}/${tokens.length} appareils`);
+
+      // Désactiver les tokens invalides
+      if (failedTokens.length > 0) {
+        await this.fcmTokenRepository.update(
+          { token: In(failedTokens) },
+          { isActive: false },
+        );
+        this.logger.warn(`🗑️ ${failedTokens.length} tokens invalides désactivés`);
+      }
+
+      this.logger.log(`========== FIN NOTIFICATION ==========\n`);
     } catch (error) {
       this.logger.error(`❌ ERREUR lors de l'envoi de la notification à l'utilisateur ${userId}:`, error);
       this.logger.log(`========== FIN NOTIFICATION (ERREUR) ==========\n`);
