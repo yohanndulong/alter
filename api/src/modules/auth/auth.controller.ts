@@ -22,7 +22,12 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() verifyCodeDto: VerifyCodeDto): Promise<{ token: string; user: User }> {
-    return this.authService.verifyCodeAndLogin(verifyCodeDto.email, verifyCodeDto.code);
+    return this.authService.verifyCodeAndLogin(
+      verifyCodeDto.email,
+      verifyCodeDto.code,
+      verifyCodeDto.bundleId,
+      verifyCodeDto.platform,
+    );
   }
 
   @Get('me')

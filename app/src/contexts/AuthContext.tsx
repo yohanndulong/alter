@@ -7,6 +7,7 @@ import { alterDB } from '@/utils/indexedDB'
 import { queryClient } from '@/lib/queryClient'
 import { chatService } from '@/services/chat'
 import { alterChatStorage } from '@/utils/alterChatStorage'
+import { getPlatformInfo } from '@/config/app'
 
 interface AuthContextType {
   user: User | null
@@ -79,7 +80,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const login = async (email: string, code: string) => {
-    const { token, user: userData } = await api.post<{ token: string; user: User }>('/auth/login', { email, code })
+    // Récupérer les infos de la plateforme pour sécuriser l'authentification
+    const platformInfo = await getPlatformInfo()
+
+    const { token, user: userData } = await api.post<{ token: string; user: User }>('/auth/login', {
+      email,
+      code,
+      bundleId: platformInfo.bundleId,
+      platform: platformInfo.platform,
+    })
+
     localStorage.setItem('auth_token', token)
     localStorage.setItem('cached_user', JSON.stringify(userData))
     setUser(userData)

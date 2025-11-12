@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { UnauthorizedException } from '@nestjs/common';
 import { AlterChatService } from './alter-chat.service';
 import { JwtService } from '@nestjs/jwt';
+import { AppValidationService } from '../auth/services/app-validation.service';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -27,6 +28,7 @@ export class AlterChatGateway implements OnGatewayConnection, OnGatewayDisconnec
   constructor(
     private readonly alterChatService: AlterChatService,
     private readonly jwtService: JwtService,
+    private readonly appValidationService: AppValidationService,
   ) {
     // S'enregistrer auprès du service pour éviter la dépendance circulaire
     this.alterChatService.setGateway(this);
@@ -51,11 +53,18 @@ export class AlterChatGateway implements OnGatewayConnection, OnGatewayDisconnec
       const payload = await this.jwtService.verifyAsync(token);
       client.userId = payload.sub; // Attacher l'userId au socket
 
+      // Valider que la connexion vient d'une app mobile officielle
+      this.appValidationService.validateRequest({
+        headers: client.handshake.headers,
+        bundleId: payload.bundleId,
+        platform: payload.platform,
+      });
+
       console.log(`Alter Chat - Token verified successfully`);
       console.log(`Alter Chat - Payload:`, payload);
       console.log(`Alter Chat - Client connected: ${client.id} (userId: ${client.userId})`);
     } catch (error) {
-      console.log(`Alter Chat - Connection rejected: Invalid token`);
+      console.log(`Alter Chat - Connection rejected: ${error.message}`);
       console.log(`Alter Chat - Error details:`, error.message);
       console.log(`Alter Chat - Error name:`, error.name);
       client.disconnect();

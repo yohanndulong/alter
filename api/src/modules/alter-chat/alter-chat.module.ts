@@ -9,6 +9,7 @@ import { AlterChatGateway } from './alter-chat.gateway';
 import { LlmModule } from '../llm/llm.module';
 import { UsersModule } from '../users/users.module';
 import { EmbeddingsModule } from '../embeddings/embeddings.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { EmbeddingsModule } from '../embeddings/embeddings.module';
     LlmModule,
     UsersModule,
     EmbeddingsModule,
+    AuthModule,
   ],
   controllers: [AlterChatController],
   providers: [AlterChatService, AlterChatGateway],

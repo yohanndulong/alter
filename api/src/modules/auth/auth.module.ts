@@ -7,6 +7,8 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { EmailModule } from '../email/email.module';
+import { AppValidationService } from './services/app-validation.service';
+import { AppPlatformGuard } from './guards/app-platform.guard';
 
 @Module({
   imports: [
@@ -25,7 +27,7 @@ import { EmailModule } from '../email/email.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, AppValidationService, AppPlatformGuard],
+  exports: [AuthService, AppValidationService, AppPlatformGuard],
 })
 export class AuthModule {}

@@ -15,6 +15,7 @@ import { UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
+import { AppValidationService } from '../auth/services/app-validation.service';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -32,6 +33,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly chatService: ChatService,
     private readonly mediaService: MediaService,
     private readonly jwtService: JwtService,
+    private readonly appValidationService: AppValidationService,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
   ) {
@@ -57,13 +59,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = await this.jwtService.verifyAsync(token);
       client.userId = payload.sub; // Attacher l'userId au socket
 
+      // Valider que la connexion vient d'une app mobile officielle
+      this.appValidationService.validateRequest({
+        headers: client.handshake.headers,
+        bundleId: payload.bundleId,
+        platform: payload.platform,
+      });
+
       // Join user-specific room for targeted messages
       client.join(`user-${client.userId}`);
 
       console.log(`Chat - Token verified successfully`);
       console.log(`Chat - Client connected: ${client.id} (userId: ${client.userId})`);
     } catch (error) {
-      console.log(`Chat - Connection rejected: Invalid token`);
+      console.log(`Chat - Connection rejected: ${error.message}`);
       console.log(`Chat - Error details:`, error.message);
       client.disconnect();
     }

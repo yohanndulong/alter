@@ -56,7 +56,12 @@ export class AuthService {
   /**
    * Vérifie le code et connecte l'utilisateur
    */
-  async verifyCodeAndLogin(email: string, code: string): Promise<{ token: string; user: User }> {
+  async verifyCodeAndLogin(
+    email: string,
+    code: string,
+    bundleId: string,
+    platform: 'ios' | 'android',
+  ): Promise<{ token: string; user: User }> {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
@@ -84,8 +89,13 @@ export class AuthService {
     // Recharge l'utilisateur avec photos
     const updatedUser = await this.usersService.getUserWithPhotosUrls(user.id);
 
-    // Génère le token JWT
-    const token = this.jwtService.sign({ sub: updatedUser.id, email: updatedUser.email });
+    // Génère le token JWT avec bundleId et platform (stables)
+    const token = this.jwtService.sign({
+      sub: updatedUser.id,
+      email: updatedUser.email,
+      bundleId, // Stable : ne change jamais
+      platform, // Stable : ios ou android
+    });
 
     return { token, user: updatedUser };
   }

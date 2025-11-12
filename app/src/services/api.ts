@@ -1,3 +1,5 @@
+import { getSecurityHeaders } from '@/config/app';
+
 const API_BASE_URL = import.meta.env.VITE_ENABLE_MOCKS === 'true'
   ? '/api'
   : (import.meta.env.VITE_API_URL || '/api')
@@ -11,11 +13,14 @@ export const setNetworkErrorNotifier = (notifier: (error: any) => void) => {
 }
 
 class ApiService {
-  private getHeaders(): HeadersInit {
+  private async getHeaders(): Promise<HeadersInit> {
     const token = localStorage.getItem('auth_token')
+    const securityHeaders = await getSecurityHeaders()
+
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
+      ...securityHeaders,
     }
   }
 
@@ -24,10 +29,12 @@ class ApiService {
     options?: RequestInit
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
+    const headers = await this.getHeaders()
+
     const config: RequestInit = {
       ...options,
       headers: {
-        ...this.getHeaders(),
+        ...headers,
         ...options?.headers,
       },
       // Timeout de 30 secondes
@@ -129,10 +136,14 @@ class ApiService {
     formData.append('file', file)
 
     const token = localStorage.getItem('auth_token')
+    const securityHeaders = await getSecurityHeaders()
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers: {
         ...(token && { Authorization: `Bearer ${token}` }),
+        ...securityHeaders,
+        // Note: Ne pas ajouter Content-Type pour FormData (géré automatiquement)
       },
       body: formData,
     })

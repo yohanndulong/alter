@@ -1,6 +1,7 @@
 import { api } from './api'
 import { Message, ChatMessage, PhotoViewMode } from '@/types'
 import { io, Socket } from 'socket.io-client'
+import { getSecurityHeaders } from '@/config/app'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace(/\/api$/, '') || 'http://localhost:3000'
 console.log('🔍 WebSocket API_BASE_URL:', API_BASE_URL)
@@ -14,13 +15,17 @@ let alterChatSocket: Socket | null = null
 export const chatService = {
   // ===== Chat entre utilisateurs (WebSocket) =====
 
-  initChatSocket(): Socket {
+  async initChatSocket(): Promise<Socket> {
     if (!chatSocket) {
+      const securityHeaders = await getSecurityHeaders()
+
       chatSocket = io(`${API_BASE_URL}/chat`, {
         transports: ['websocket'],
         auth: {
           token: localStorage.getItem('auth_token'),
         },
+        // Headers de sécurité pour l'handshake
+        extraHeaders: securityHeaders,
       })
     }
     return chatSocket
@@ -222,13 +227,17 @@ export const chatService = {
 
   // ===== Alter Chat (WebSocket) =====
 
-  initAlterChatSocket(): Socket {
+  async initAlterChatSocket(): Promise<Socket> {
     if (!alterChatSocket) {
+      const securityHeaders = await getSecurityHeaders()
+
       alterChatSocket = io(`${API_BASE_URL}/alter-chat`, {
         transports: ['websocket'],
         auth: {
           token: localStorage.getItem('auth_token'),
         },
+        // Headers de sécurité pour l'handshake
+        extraHeaders: securityHeaders,
       })
 
       // Rejoindre automatiquement la room Alter Chat (userId extrait du JWT côté serveur)
