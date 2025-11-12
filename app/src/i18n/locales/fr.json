@@ -240,7 +240,11 @@
     "reject": "Refuser",
     "loadingMore": "Chargement de l'historique...",
     "unreadCount": "{{count}} non lu",
-    "unreadCount_plural": "{{count}} non lus"
+    "unreadCount_plural": "{{count}} non lus",
+    "alchemyTitle": "Votre Alchimie",
+    "alchemyButton": "Découvrez votre alchimie",
+    "alchemyAnalyzing": "Analyse en cours...",
+    "alchemyAdvice": "Conseil ALTER"
   },
   "profile": {
     "title": "Profil",

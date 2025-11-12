@@ -252,6 +252,41 @@ export const Button: React.FC<ButtonProps> = ({ label, onClick, variant = 'prima
 };
 ```
 
+### Internationalisation (i18n)
+
+**IMPORTANT** : Toujours utiliser le système i18n pour tous les textes visibles par l'utilisateur.
+
+- **JAMAIS de texte en dur** : Ne jamais écrire de texte directement dans les composants
+- **Utiliser `t()`** : Toujours utiliser la fonction `t()` de `react-i18next`
+- **Fichiers de traduction** : Ajouter les clés dans `app/src/i18n/locales/fr.json` ET `en.json`
+- **Nommage des clés** : Utiliser la structure `section.key` (ex: `chat.alchemyTitle`)
+
+Exemple :
+```typescript
+import { useTranslation } from 'react-i18next'
+
+export const MyComponent = () => {
+  const { t } = useTranslation()
+
+  return (
+    <div>
+      <h1>{t('chat.title')}</h1>
+      <button title={t('chat.send')}>{t('common.send')}</button>
+    </div>
+  )
+}
+```
+
+Fichiers de traduction (`fr.json` et `en.json`) :
+```json
+{
+  "chat": {
+    "title": "Messages",
+    "send": "Envoyer"
+  }
+}
+```
+
 ### NestJS
 
 - **Modules** : Un module par fonctionnalité

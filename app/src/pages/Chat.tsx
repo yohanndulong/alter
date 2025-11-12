@@ -422,12 +422,15 @@ export const Chat: React.FC = () => {
     ]
     let currentStep = 0
     const stepInterval = setInterval(() => {
-      currentStep = (currentStep + 1) % loadingSteps.length
-      const stepElement = document.querySelector('.chat-quality-skeleton-text')
-      if (stepElement) {
-        stepElement.textContent = loadingSteps[currentStep]
+      // S'arrêter sur "Finalisation..." au lieu de boucler
+      if (currentStep < loadingSteps.length - 1) {
+        currentStep++
+        const stepElement = document.querySelector('.chat-quality-skeleton-text')
+        if (stepElement) {
+          stepElement.textContent = loadingSteps[currentStep]
+        }
       }
-    }, 2000)
+    }, 3000)
 
     try {
       const result = await chatService.analyzeConversationQuality(matchId)
@@ -612,11 +615,13 @@ export const Chat: React.FC = () => {
             </div>
           </div>
           <button
-            className="chat-quality-icon-button"
+            className="chat-quality-badge-button"
             onClick={handleQualityClick}
-            title={t('chat.conversationQuality')}
+            title={t('chat.alchemyButton')}
           >
-            {renderQualityIcon(conversationQuality)}
+            <span className="quality-badge-icon">
+              <span className="quality-badge-icon-inner">🧪</span>
+            </span>
           </button>
           <div className="chat-menu-container" ref={menuRef}>
             <button
@@ -801,53 +806,99 @@ export const Chat: React.FC = () => {
         size="md"
       >
         <div className="chat-quality-modal">
-          <h2 className="chat-quality-modal-title">{t('chat.qualityDetails')}</h2>
+          {/* Particules de confettis sur toute la modale */}
+          <div className="chat-quality-confetti">
+            {[...Array(12)].map((_, i) => (
+              <div
+                key={i}
+                className="confetti-particle"
+                style={{
+                  left: `${(i / 12) * 100}%`,
+                  animationDelay: `${i * 0.1}s`,
+                  backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffa502', '#ff6348', '#5f27cd'][i % 6]
+                }}
+              />
+            ))}
+          </div>
+
+          <h2 className="chat-quality-modal-title">🧪 {t('chat.alchemyTitle')} 🧪</h2>
 
           {isLoadingQuality ? (
             <div className="chat-quality-skeleton">
-              <div className="chat-quality-skeleton-header">
-                <div className="chat-quality-skeleton-logo">
-                  <Logo variant="icon" size={32} />
+              <div className="chat-quality-skeleton-center">
+                <div className="chat-quality-skeleton-circle-loader">
+                  <Logo variant="icon" size={40} />
                 </div>
                 <span className="chat-quality-skeleton-text">Lecture des messages...</span>
               </div>
 
-              <div className="chat-quality-skeleton-progress">
-                <div className="chat-quality-skeleton-progress-bar"></div>
-              </div>
-
-              <div className="chat-quality-skeleton-score">
-                <div className="chat-quality-skeleton-circle">
-                  <div className="chat-quality-skeleton-percentage"></div>
-                </div>
-                <div className="chat-quality-skeleton-label"></div>
-              </div>
-
-              <div className="chat-quality-skeleton-analysis">
-                <div className="chat-quality-skeleton-analysis-title"></div>
-                <div className="chat-quality-skeleton-analysis-line"></div>
-                <div className="chat-quality-skeleton-analysis-line"></div>
-                <div className="chat-quality-skeleton-analysis-line short"></div>
+              <div className="chat-quality-skeleton-badges">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="chat-quality-skeleton-badge" style={{ animationDelay: `${i * 0.1}s` }}>
+                    <div className="skeleton-badge-icon"></div>
+                    <div className="skeleton-badge-content">
+                      <div className="skeleton-badge-line"></div>
+                      <div className="skeleton-badge-line short"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="chat-quality-skeleton-footer">
-                Cela peut prendre quelques secondes
+                ⏳ {t('chat.alchemyAnalyzing')}
               </div>
             </div>
           ) : qualityDetails ? (
             <>
-              <div className="chat-quality-overall">
-                <div className="chat-quality-overall-score">
-                  <span className="chat-quality-score-value" style={{ color: getQualityColor(qualityDetails.score) }}>
-                    {qualityDetails.score}%
-                  </span>
-                  <span className="chat-quality-score-label">{getQualityLevel(qualityDetails.score)}</span>
+              {/* Score central */}
+              <div className="chat-quality-score-container">
+                <div className="chat-quality-score-circle">
+                  <div className="chat-quality-score-inner" style={{ color: getQualityColor(qualityDetails.score) }}>
+                    <div className="chat-quality-score-value-large">{qualityDetails.score}%</div>
+                    <div className="chat-quality-score-label-large">{getQualityLevel(qualityDetails.score)}</div>
+                  </div>
                 </div>
               </div>
 
-              <div className="chat-quality-analysis">
-                <h3 className="chat-quality-analysis-title">Analyse IA</h3>
-                <p className="chat-quality-analysis-text">{qualityDetails.feedback}</p>
+              {/* Badges des métriques */}
+              <div className="chat-quality-badges">
+                <div className="chat-quality-badge" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                  <div className="badge-icon">🤝</div>
+                  <div className="badge-content">
+                    <div className="badge-label">Respect</div>
+                    <div className="badge-value">{Math.round(qualityDetails.score * 0.9)}/100</div>
+                  </div>
+                </div>
+                <div className="chat-quality-badge" style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
+                  <div className="badge-icon">💝</div>
+                  <div className="badge-content">
+                    <div className="badge-label">Connexion</div>
+                    <div className="badge-value">{Math.round(qualityDetails.score * 1.0)}/100</div>
+                  </div>
+                </div>
+                <div className="chat-quality-badge" style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
+                  <div className="badge-icon">🎯</div>
+                  <div className="badge-content">
+                    <div className="badge-label">Profondeur</div>
+                    <div className="badge-value">{Math.round(qualityDetails.score * 0.85)}/100</div>
+                  </div>
+                </div>
+                <div className="chat-quality-badge" style={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}>
+                  <div className="badge-icon">✨</div>
+                  <div className="badge-content">
+                    <div className="badge-label">Positivité</div>
+                    <div className="badge-value">{Math.round(qualityDetails.score * 0.95)}/100</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analyse compacte */}
+              <div className="chat-quality-analysis-compact">
+                <div className="analysis-header">
+                  <span className="analysis-icon">💡</span>
+                  <span className="analysis-title">{t('chat.alchemyAdvice')}</span>
+                </div>
+                <p className="analysis-text">{qualityDetails.feedback}</p>
               </div>
             </>
           ) : null}

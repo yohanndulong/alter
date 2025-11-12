@@ -240,7 +240,11 @@
     "reject": "Reject",
     "loadingMore": "Loading history...",
     "unreadCount": "{{count}} unread",
-    "unreadCount_plural": "{{count}} unread"
+    "unreadCount_plural": "{{count}} unread",
+    "alchemyTitle": "Your Chemistry",
+    "alchemyButton": "Discover your chemistry",
+    "alchemyAnalyzing": "Analyzing...",
+    "alchemyAdvice": "ALTER's Advice"
   },
   "profile": {
     "title": "Profile",
