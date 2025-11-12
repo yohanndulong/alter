@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence, PanInfo } from 'framer-motion'
 import { Logo, NetworkAnimation } from '@/components'
+import { Capacitor } from '@capacitor/core'
 import './Introduction.css'
 
 interface Slide {
@@ -92,9 +93,12 @@ export const Introduction: React.FC = () => {
 
   return (
     <div className="introduction">
-      <div className="introduction__network-background">
-        <NetworkAnimation />
-      </div>
+      {/* Désactiver NetworkAnimation sur mobile natif pour éviter les freezes iOS */}
+      {!Capacitor.isNativePlatform() && (
+        <div className="introduction__network-background">
+          <NetworkAnimation />
+        </div>
+      )}
 
       <div className="introduction__header">
         <Logo size={40} />
@@ -128,23 +132,20 @@ export const Introduction: React.FC = () => {
             initial={{
               opacity: 0,
               x: dragDirection > 0 ? -100 : 100,
-              scale: 0.8,
-              rotateY: dragDirection > 0 ? -15 : 15
+              scale: 0.95
             }}
             animate={{
               opacity: 1,
               x: 0,
-              scale: 1,
-              rotateY: 0
+              scale: 1
             }}
             exit={{
               opacity: 0,
               x: dragDirection > 0 ? 100 : -100,
-              scale: 0.8,
-              rotateY: dragDirection > 0 ? 15 : -15
+              scale: 0.95
             }}
             transition={{
-              duration: 0.5,
+              duration: 0.4,
               ease: [0.34, 1.56, 0.64, 1]
             }}
             drag="x"
@@ -153,14 +154,14 @@ export const Introduction: React.FC = () => {
             onDragEnd={handleDragEnd}
             className="introduction__slide"
           >
-            {/* Particules décoratives */}
+            {/* Particules décoratives - Réduit pour iOS performance */}
             <motion.div
               className="introduction__particles"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {[...Array(6)].map((_, i) => (
+              {[...Array(3)].map((_, i) => (
                 <motion.div
                   key={i}
                   className="introduction__particle"
@@ -171,14 +172,14 @@ export const Introduction: React.FC = () => {
                     opacity: 0
                   }}
                   animate={{
-                    x: Math.cos(i * 60) * 120,
-                    y: Math.sin(i * 60) * 120,
+                    x: Math.cos(i * 120) * 100,
+                    y: Math.sin(i * 120) * 100,
                     scale: 1,
-                    opacity: [0, 0.6, 0]
+                    opacity: [0, 0.5, 0]
                   }}
                   transition={{
-                    duration: 1.5,
-                    delay: 0.2 + i * 0.1,
+                    duration: 1.2,
+                    delay: 0.2 + i * 0.15,
                     ease: "easeOut"
                   }}
                   style={{ background: slides[currentSlide].gradient }}
@@ -190,12 +191,10 @@ export const Introduction: React.FC = () => {
               className="introduction__icon-container"
               style={{ background: slides[currentSlide].gradient }}
               initial={{
-                scale: 0,
-                rotate: -180
+                scale: 0
               }}
               animate={{
-                scale: 1,
-                rotate: 0
+                scale: 1
               }}
               transition={{
                 type: "spring",
@@ -204,25 +203,24 @@ export const Introduction: React.FC = () => {
                 delay: 0.1
               }}
               whileHover={{
-                scale: 1.1,
-                rotate: 5
+                scale: 1.05
               }}
             >
               {slides[currentSlide].icon === 'logo' ? (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                 >
                   <Logo variant="icon" size={80} className="introduction__icon-logo" />
                 </motion.div>
               ) : (
                 <motion.span
                   className="introduction__icon"
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
                   transition={{
-                    delay: 0.3,
+                    delay: 0.2,
                     type: "spring",
                     stiffness: 200,
                     damping: 12
@@ -235,34 +233,24 @@ export const Introduction: React.FC = () => {
 
             <motion.h1
               className="introduction__title"
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: 0.3,
-                duration: 0.5,
-                ease: [0.34, 1.56, 0.64, 1]
+                delay: 0.2,
+                duration: 0.4,
+                ease: "easeOut"
               }}
             >
-              {slides[currentSlide].title.split(' ').map((word, i) => (
-                <motion.span
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  style={{ display: 'inline-block', marginRight: '0.3em' }}
-                >
-                  {word}
-                </motion.span>
-              ))}
+              {slides[currentSlide].title}
             </motion.h1>
 
             <motion.p
               className="introduction__description"
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{
-                delay: 0.5,
-                duration: 0.5,
+                delay: 0.3,
+                duration: 0.4,
                 ease: "easeOut"
               }}
             >

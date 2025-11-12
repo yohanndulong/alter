@@ -1,4 +1,5 @@
 import { PushNotifications, Token, PushNotificationSchema, ActionPerformed } from '@capacitor/push-notifications'
+import { Capacitor } from '@capacitor/core'
 import { api } from './api'
 
 class NotificationService {
@@ -69,12 +70,21 @@ class NotificationService {
   }
 
   /**
-   * Envoie le token FCM au backend
+   * Envoie le token au backend avec la plateforme détectée
    */
   private async sendTokenToBackend(token: string): Promise<void> {
     try {
-      await api.post('/notifications/register-token', { token })
-      console.log('✅ Token FCM envoyé au backend')
+      // Détecter la plateforme
+      const platform = Capacitor.getPlatform() // 'ios', 'android', ou 'web'
+
+      console.log(`📱 Envoi du token ${platform.toUpperCase()} au backend`)
+
+      await api.post('/notifications/register-token', {
+        token,
+        platform
+      })
+
+      console.log(`✅ Token ${platform.toUpperCase()} envoyé au backend`)
     } catch (error) {
       console.error('❌ Erreur lors de l\'envoi du token au backend:', error)
     }
