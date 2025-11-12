@@ -1,7 +1,5 @@
 import UIKit
 import Capacitor
-import Firebase
-import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -9,28 +7,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Configure Firebase
-        FirebaseApp.configure()
-
-        // Configure Firebase Messaging
-        Messaging.messaging().delegate = self
-
-        // Request notification permissions
+        // Définir le delegate pour gérer les notifications au premier plan
         UNUserNotificationCenter.current().delegate = self
-
-        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(
-            options: authOptions,
-            completionHandler: { granted, error in
-                if granted {
-                    print("✅ Notification permission granted")
-                } else {
-                    print("⚠️ Notification permission denied")
-                }
-            }
-        )
-
-        application.registerForRemoteNotifications()
 
         return true
     }
@@ -70,26 +48,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
-    // APNs token registration
+    // APNs token registration - Notifier Capacitor
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        print("📱 APNs device token registered")
-        Messaging.messaging().apnsToken = deviceToken
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
-}
-
-// MARK: - MessagingDelegate
-extension AppDelegate: MessagingDelegate {
-    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        print("📲 Firebase FCM token: \(fcmToken ?? "nil")")
-
-        // Le token FCM sera automatiquement géré par le plugin Capacitor Push Notifications
-        // Il sera envoyé au backend via notificationService.initialize()
-    }
 }
 
 // MARK: - UNUserNotificationCenterDelegate
