@@ -47,8 +47,6 @@ export const Chat: React.FC = () => {
   const typingTimeoutRef = useRef<NodeJS.Timeout>()
   const lastScrollHeight = useRef<number>(0)
 
-  const conversationQuality = match?.conversationQualityScore || 75
-
   // 🔒 Protection contre les captures d'écran (désactivée pour les admins)
   const enableScreenshotProtection = !user?.isAdmin
   usePrivacyScreen(enableScreenshotProtection)
@@ -351,59 +349,6 @@ export const Chat: React.FC = () => {
     if (score >= 60) return '#8b5cf6' // purple
     if (score >= 40) return '#f59e0b' // orange
     return '#ef4444' // red
-  }
-
-  const renderQualityIcon = (score: number) => {
-    const color = getQualityColor(score)
-
-    return (
-      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id={`qualityGradient-${score}`} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style={{ stopColor: color, stopOpacity: 1 }} />
-            <stop offset="100%" style={{ stopColor: color, stopOpacity: 0.6 }} />
-          </linearGradient>
-        </defs>
-
-        {/* Cercle de progression */}
-        <circle
-          cx="16"
-          cy="16"
-          r="12"
-          stroke={`url(#qualityGradient-${score})`}
-          strokeWidth="3"
-          fill="none"
-          strokeDasharray={`${(score / 100) * 75.4} 75.4`}
-          strokeLinecap="round"
-          transform="rotate(-90 16 16)"
-        />
-
-        {/* Icône centrale selon le score */}
-        {score >= 90 ? (
-          // Étoile pour excellent
-          <path d="M16 6 L18 12 L24 12 L19 16 L21 22 L16 18 L11 22 L13 16 L8 12 L14 12 Z" fill={color} />
-        ) : score >= 75 ? (
-          // Coeur pour très bien - réduit pour être à l'intérieur du cercle
-          <path d="M16 21 C16 21 11 17.5 11 13.5 C11 11.5 12.5 10.5 14 11.5 C15 12 16 13.5 16 13.5 C16 13.5 17 12 18 11.5 C19.5 10.5 21 11.5 21 13.5 C21 17.5 16 21 16 21 Z" fill={color} />
-        ) : score >= 60 ? (
-          // Pouce levé pour bien
-          <path d="M14 10 L14 6 C14 5 15 4 16 4 C17 4 18 5 18 6 L18 10 M14 10 L14 18 L20 18 C21 18 22 17 22 16 L22 12 C22 11 21 10 20 10 L18 10 M14 18 L10 18 C9 18 8 17 8 16 L8 14 C8 13 9 12 10 12 L14 12" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        ) : score >= 40 ? (
-          // Point d'exclamation pour moyen
-          <g>
-            <circle cx="16" cy="22" r="1.5" fill={color} />
-            <rect x="15" y="10" width="2" height="9" rx="1" fill={color} />
-          </g>
-        ) : (
-          // Triangle d'alerte pour à améliorer
-          <g>
-            <path d="M16 8 L24 24 L8 24 Z" stroke={color} strokeWidth="2" fill="none" />
-            <circle cx="16" cy="21" r="1" fill={color} />
-            <rect x="15.5" y="14" width="1" height="5" fill={color} />
-          </g>
-        )}
-      </svg>
-    )
   }
 
   const handleQualityClick = async (e: React.MouseEvent) => {
