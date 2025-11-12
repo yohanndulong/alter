@@ -114,6 +114,7 @@ export const VerifyCode: React.FC = () => {
 
               <Input
                 type="text"
+                inputMode="numeric"
                 label={t('auth.verificationCode')}
                 placeholder={t('common.codePlaceholder')}
                 value={code}

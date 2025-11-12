@@ -37,16 +37,36 @@ export class UsersService {
   ) {}
 
   async findById(id: string, includePhotos = true): Promise<User> {
-    const relations = includePhotos ? ['photos'] : [];
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations,
-      order: includePhotos ? { photos: { order: 'ASC' } } : undefined,
-    });
-    if (!user) {
-      throw new NotFoundException('User not found');
+    // ⚡ OPTIMISATION CRITIQUE : Ne jamais charger le champ 'data' (BYTEA) des photos
+    // Utiliser QueryBuilder pour exclure le blob qui peut faire des centaines de MB
+    if (includePhotos) {
+      const user = await this.userRepository
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.photos', 'photos')
+        .select([
+          'user',
+          'photos.id',
+          'photos.order',
+          'photos.isPrimary',
+          'photos.mimeType',
+          'photos.createdAt',
+          'photos.updatedAt',
+        ])
+        .where('user.id = :id', { id })
+        .orderBy('photos.order', 'ASC')
+        .getOne();
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return user;
+    } else {
+      const user = await this.userRepository.findOne({ where: { id } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      return user;
     }
-    return user;
   }
 
   /**

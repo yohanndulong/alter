@@ -26,7 +26,7 @@ export class EmailService {
       await this.resend.emails.send({
         from: this.fromEmail,
         to: email,
-        subject: `Votre code de vérification Alter - ${code}`,
+        subject: `${code} - Votre code de vérification Alter`,
         html: this.getVerificationEmailTemplate(code),
       });
 
