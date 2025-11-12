@@ -63,6 +63,34 @@ export const EditProfile: React.FC = () => {
     loadMinPhotos()
   }, [])
 
+  // Cleanup: force save on unmount if there are pending changes
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+
+        // Use navigator.sendBeacon for synchronous save on unmount
+        // This ensures data is saved even if user closes the page
+        const data = {
+          city,
+          sexualOrientation,
+          preferenceAgeMin: preferences.ageMin,
+          preferenceAgeMax: preferences.ageMax,
+          preferenceDistance: preferences.distance,
+          preferenceMinCompatibility: preferences.minCompatibility,
+          preferenceGenders: preferences.genders
+        }
+
+        console.log('💾 [EditProfile] Cleanup: saving preferences on unmount', data)
+
+        // Fallback to synchronous API call (best effort)
+        api.put('/users/me', data).catch(err => {
+          console.error('❌ [EditProfile] Cleanup save error:', err)
+        })
+      }
+    }
+  }, [city, sexualOrientation, preferences])
+
   // Load user data once when user is available
   useEffect(() => {
     if (user && !isInitializedRef.current) {
@@ -114,8 +142,10 @@ export const EditProfile: React.FC = () => {
 
     saveTimerRef.current = setTimeout(async () => {
       try {
+        console.log('💾 [EditProfile] Auto-saving preferences:', data)
         setSaveIndicator('saving')
         await api.put('/users/me', data)
+        console.log('✅ [EditProfile] Preferences saved successfully')
 
         // Don't update local user context to avoid triggering infinite loops
         // The data is already saved to the API and will be reflected when needed
@@ -123,13 +153,15 @@ export const EditProfile: React.FC = () => {
         setSaveIndicator('saved')
         setTimeout(() => setSaveIndicator('idle'), 2000)
       } catch (err) {
-        console.error('Auto-save error:', err)
+        console.error('❌ [EditProfile] Auto-save error:', err)
+        showError(t('editProfile.saveError') || 'Erreur lors de la sauvegarde')
         setSaveIndicator('idle')
       }
     }, 800) // 800ms debounce
-  }, [])
+  }, [showError, t])
 
   const handleCityChange = (cityName: string, latitude?: number, longitude?: number) => {
+    console.log('🌍 [EditProfile] City changed:', { cityName, latitude, longitude })
     setCity(cityName)
     autoSave({
       city: cityName,
@@ -140,21 +172,25 @@ export const EditProfile: React.FC = () => {
 
   const handleSexualOrientationChange = (value: string) => {
     const newValue = sexualOrientation === value ? '' : value
+    console.log('🏳️‍🌈 [EditProfile] Sexual orientation changed:', { from: sexualOrientation, to: newValue })
     setSexualOrientation(newValue)
     autoSave({ sexualOrientation: newValue })
   }
 
   const handlePreferenceChange = (field: string, value: any) => {
     const newPreferences = { ...preferences, [field]: value }
+    console.log('⚙️ [EditProfile] Preference changed:', { field, value, newPreferences })
     setPreferences(newPreferences)
 
-    autoSave({
+    const dataToSave = {
       preferenceAgeMin: newPreferences.ageMin,
       preferenceAgeMax: newPreferences.ageMax,
       preferenceDistance: newPreferences.distance,
       preferenceMinCompatibility: newPreferences.minCompatibility,
       preferenceGenders: newPreferences.genders as ('male' | 'female' | 'other')[]
-    })
+    }
+    console.log('💾 [EditProfile] Saving preferences:', dataToSave)
+    autoSave(dataToSave)
   }
 
   const togglePreferenceGender = (gender: string) => {
@@ -162,16 +198,19 @@ export const EditProfile: React.FC = () => {
       ? preferences.genders.filter(g => g !== gender)
       : [...preferences.genders, gender]
 
+    console.log('👤 [EditProfile] Gender preference toggled:', { gender, newGenders })
     const newPreferences = { ...preferences, genders: newGenders }
     setPreferences(newPreferences)
 
-    autoSave({
+    const dataToSave = {
       preferenceAgeMin: newPreferences.ageMin,
       preferenceAgeMax: newPreferences.ageMax,
       preferenceDistance: newPreferences.distance,
       preferenceMinCompatibility: newPreferences.minCompatibility,
       preferenceGenders: newGenders as ('male' | 'female' | 'other')[]
-    })
+    }
+    console.log('💾 [EditProfile] Saving gender preferences:', dataToSave)
+    autoSave(dataToSave)
   }
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,9 +273,27 @@ export const EditProfile: React.FC = () => {
     }
   }
 
-  const handleBack = () => {
+  const handleBack = async () => {
+    // Force save immediately if there's a pending save
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
+
+      // Force immediate save with current preferences
+      try {
+        console.log('💾 [EditProfile] Force saving on navigation')
+        await api.put('/users/me', {
+          city,
+          sexualOrientation,
+          preferenceAgeMin: preferences.ageMin,
+          preferenceAgeMax: preferences.ageMax,
+          preferenceDistance: preferences.distance,
+          preferenceMinCompatibility: preferences.minCompatibility,
+          preferenceGenders: preferences.genders as ('male' | 'female' | 'other')[]
+        })
+        console.log('✅ [EditProfile] Force save complete')
+      } catch (err) {
+        console.error('❌ [EditProfile] Force save error:', err)
+      }
     }
     navigate('/profile')
   }

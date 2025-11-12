@@ -33,6 +33,10 @@ export class UpdateProfileDto {
   locationLongitude?: number;
 
   @IsOptional()
+  @IsString()
+  sexualOrientation?: string;
+
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   interests?: string[];
@@ -52,6 +56,12 @@ export class UpdateProfileDto {
   @Min(1)
   @Max(500)
   preferenceDistance?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  preferenceMinCompatibility?: number;
 
   @IsOptional()
   @IsArray()
