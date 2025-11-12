@@ -3,14 +3,14 @@
   bottom: 0;
   left: 0;
   right: 0;
-  min-height: calc(60px + env(safe-area-inset-bottom));
+  min-height: calc(env(safe-area-inset-bottom));
   background: #ffffff;
   border-top: 1px solid #e5e5e5;
   display: flex;
   justify-content: space-around;
   align-items: center;
   padding: 0.5rem 1rem;
-  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(0.2rem + env(safe-area-inset-bottom));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
   z-index: 1000;
@@ -66,9 +66,8 @@
 /* Responsive */
 @media (max-width: 768px) {
   .bottom-nav {
-    min-height: calc(55px + env(safe-area-inset-bottom));
-    padding: 0.375rem 0.5rem;
-    padding-bottom: calc(0.375rem + env(safe-area-inset-bottom));
+    min-height: calc(40px + env(safe-area-inset-bottom));
+    padding-bottom: calc(0.2rem + env(safe-area-inset-bottom));
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
   }

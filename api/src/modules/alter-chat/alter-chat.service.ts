@@ -59,6 +59,25 @@ export class AlterChatService {
   }
 
   /**
+   * Cursor-based sync: returns only messages with sequenceId > after
+   * Enables efficient incremental synchronization for Alter Chat
+   */
+  async syncMessages(userId: string, afterSequenceId: number): Promise<AlterMessage[]> {
+    this.logger.log(`🔄 Syncing Alter messages for user ${userId} after sequence ${afterSequenceId}`);
+
+    const messages = await this.alterMessageRepository
+      .createQueryBuilder('message')
+      .where('message.userId = :userId', { userId })
+      .andWhere('message.sequenceId > :afterSequenceId', { afterSequenceId })
+      .orderBy('message.sequenceId', 'ASC')
+      .getMany();
+
+    this.logger.log(`✅ Synced ${messages.length} new Alter messages`);
+
+    return messages;
+  }
+
+  /**
    * Crée le message de bienvenue initial avec 2 options de réponse
    */
   private async createWelcomeMessage(userId: string): Promise<AlterMessage> {

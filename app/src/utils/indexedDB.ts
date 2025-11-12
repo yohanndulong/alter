@@ -388,4 +388,51 @@ export const alterDB = {
       console.error('Failed to update match lastMessage in IndexedDB:', error)
     }
   },
+
+  /**
+   * CURSOR-BASED SYNC METHODS
+   */
+
+  /**
+   * Sauvegarde le dernier sequenceId synchronisé pour un match
+   * Permet de synchroniser uniquement les nouveaux messages
+   */
+  async setLastSequenceId(matchId: string, sequenceId: number): Promise<void> {
+    try {
+      await this.setMetadata(`cursor-${matchId}`, sequenceId)
+      console.log(`✅ Saved cursor for match ${matchId}: sequenceId=${sequenceId}`)
+    } catch (error) {
+      console.error('Failed to save cursor:', error)
+    }
+  },
+
+  /**
+   * Récupère le dernier sequenceId synchronisé pour un match
+   * Retourne null si aucun curseur n'existe (première sync)
+   */
+  async getLastSequenceId(matchId: string): Promise<number | null> {
+    try {
+      const sequenceId = await this.getMetadata<number>(`cursor-${matchId}`)
+      if (sequenceId !== null) {
+        console.log(`✅ Loaded cursor for match ${matchId}: sequenceId=${sequenceId}`)
+      }
+      return sequenceId
+    } catch (error) {
+      console.error('Failed to load cursor:', error)
+      return null
+    }
+  },
+
+  /**
+   * Supprime le curseur d'un match (utile pour forcer un full reload)
+   */
+  async clearCursor(matchId: string): Promise<void> {
+    try {
+      const db = await getDB()
+      await db.delete('metadata', `cursor-${matchId}`)
+      console.log(`✅ Cleared cursor for match ${matchId}`)
+    } catch (error) {
+      console.error('Failed to clear cursor:', error)
+    }
+  },
 }

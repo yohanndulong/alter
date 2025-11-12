@@ -44,6 +44,34 @@ export class ChatService {
     });
   }
 
+  /**
+   * Cursor-based sync: returns only messages with sequenceId > after
+   * Enables efficient incremental synchronization
+   */
+  async syncMessages(matchId: string, afterSequenceId: number): Promise<Message[]> {
+    this.logger.log(`🔄 Syncing messages for match ${matchId} after sequence ${afterSequenceId}`);
+
+    const messages = await this.messageRepository
+      .createQueryBuilder('message')
+      .where('message.matchId = :matchId', { matchId })
+      .andWhere('message.sequenceId > :afterSequenceId', { afterSequenceId })
+      .leftJoinAndSelect('message.media', 'media')
+      .orderBy('message.sequenceId', 'ASC')
+      .getMany();
+
+    // Ajouter les URLs signées pour les médias
+    const messagesWithUrls = messages.map(message => {
+      if (message.media) {
+        message.media.url = this.mediaService.generateSignedUrl(message.media.filePath);
+      }
+      return message;
+    });
+
+    this.logger.log(`✅ Synced ${messages.length} new messages`);
+
+    return messagesWithUrls;
+  }
+
   async sendMessage(
     matchId: string,
     senderId: string,

@@ -99,6 +99,7 @@ export interface MessageMedia {
 
 export interface Message {
   id: string
+  sequenceId: number // Auto-increment sequence for cursor-based sync
   matchId: string
   senderId: string
   receiverId: string
@@ -138,6 +139,7 @@ export interface OnboardingAnswer {
 
 export interface ChatMessage {
   id: string
+  sequenceId: number // Auto-increment sequence for cursor-based sync
   role: 'user' | 'assistant'
   content: string
   timestamp: Date

@@ -302,6 +302,7 @@ export const Chat: React.FC = () => {
     // Créer un message optimiste avec un ID temporaire
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}-${Math.random()}`,
+      sequenceId: -1, // Placeholder - sera remplacé par le vrai sequenceId du serveur
       content: messageContent,
       senderId: user.id,
       receiverId: match.matchedUserId,
@@ -467,18 +468,87 @@ export const Chat: React.FC = () => {
   }
 
   const handleSendPhoto = async (photo: CapturedPhoto, viewMode: PhotoViewMode, viewDuration?: number) => {
-    if (!matchId) return
+    if (!matchId || !match || !user) return
+
+    // Créer une URL temporaire pour l'affichage immédiat
+    const tempUrl = URL.createObjectURL(photo.blob)
+    const tempMessageId = `temp-${Date.now()}-${Math.random()}`
+
+    // Créer un message optimiste pour affichage instantané
+    const optimisticMessage: Message = {
+      id: tempMessageId,
+      sequenceId: -1, // Placeholder - sera remplacé par le vrai sequenceId du serveur
+      senderId: user.id,
+      receiverId: match.matchedUserId,
+      matchId,
+      type: 'photo',
+      createdAt: new Date(),
+      delivered: false,
+      read: false,
+      media: {
+        id: `temp-media-${Date.now()}`,
+        messageId: tempMessageId,
+        filePath: tempUrl,
+        mimeType: 'image/jpeg',
+        fileSize: photo.blob.size,
+        isReel: photo.isReel,
+        viewMode,
+        viewDuration,
+        processingStatus: 'processing',
+        url: tempUrl,
+      },
+    }
+
+    // Ajouter immédiatement au cache pour affichage instantané
+    await addMessageToCache(matchId, optimisticMessage)
 
     try {
-      await chatService.sendPhotoMessage(matchId, photo.blob, {
+      // Envoyer la photo au serveur
+      const serverMessage = await chatService.sendPhotoMessage(matchId, photo.blob, {
         isReel: photo.isReel,
         viewMode,
         viewDuration
       })
+
+      console.log('📤 [handleSendPhoto] Photo sent successfully, server returned:', serverMessage.id)
       success('Photo envoyée')
+
+      // Supprimer explicitement le message optimiste et remplacer par le message serveur
+      // Cela évite les doublons en cas de timing issue avec le WebSocket
+      const updatedMessages = queryClient.setQueryData<Message[]>(
+        chatKeys.messages(matchId),
+        (old = []) => {
+          // Supprimer tous les messages optimistes (sequenceId <= 0)
+          const withoutOptimistic = old.filter(m => m.sequenceId > 0)
+
+          // Vérifier si le message du serveur existe déjà (via WebSocket)
+          const exists = withoutOptimistic.some(m => m.id === serverMessage.id || m.sequenceId === serverMessage.sequenceId)
+
+          if (exists) {
+            console.log('📤 [handleSendPhoto] Server message already in cache (via WebSocket), not adding')
+            return withoutOptimistic
+          }
+
+          console.log('📤 [handleSendPhoto] Adding server message to cache')
+          return [...withoutOptimistic, serverMessage]
+        }
+      )
+
+      // Sauvegarder dans IndexedDB
+      if (updatedMessages) {
+        await userChatStorage.saveMessages(matchId, updatedMessages)
+      }
     } catch (err) {
       console.error('Failed to send photo:', err)
+      // Retirer le message optimiste du cache en cas d'erreur
+      queryClient.setQueryData<Message[]>(
+        chatKeys.messages(matchId),
+        (old = []) => old.filter(m => m.id !== tempMessageId)
+      )
       throw err
+    } finally {
+      // Nettoyer l'URL temporaire après un délai pour éviter le flash
+      setTimeout(() => URL.revokeObjectURL(tempUrl), 1000)
     }
   }
 

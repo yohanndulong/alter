@@ -22,9 +22,13 @@ export enum SelectionType {
 
 @Entity('alter_messages')
 @Index(['userId', 'createdAt'])
+@Index(['sequenceId'])
 export class AlterMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'bigint', generated: 'increment', unique: true })
+  sequenceId: number;
 
   @Column()
   userId: string;

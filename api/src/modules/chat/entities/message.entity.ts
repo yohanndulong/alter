@@ -21,9 +21,13 @@ export enum MessageType {
 
 @Entity('messages')
 @Index(['matchId', 'createdAt'])
+@Index(['sequenceId'])
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'bigint', generated: 'increment', unique: true })
+  sequenceId: number;
 
   @Column()
   matchId: string;

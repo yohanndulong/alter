@@ -108,6 +108,17 @@ export const chatService = {
     return api.get<Message[]>(url)
   },
 
+  /**
+   * Cursor-based sync: récupère uniquement les messages avec sequenceId > after
+   * Permet une synchronisation incrémentale efficace
+   */
+  async syncMessages(matchId: string, afterSequenceId: number): Promise<Message[]> {
+    console.log(`🔄 Syncing messages for match ${matchId} after sequence ${afterSequenceId}`)
+    const messages = await api.get<Message[]>(`/chat/matches/${matchId}/messages/sync?after=${afterSequenceId}`)
+    console.log(`✅ Received ${messages.length} new messages`)
+    return messages
+  },
+
   async sendMessage(matchId: string, content: string): Promise<Message> {
     return api.post<Message>(`/chat/matches/${matchId}/messages`, { content })
   },

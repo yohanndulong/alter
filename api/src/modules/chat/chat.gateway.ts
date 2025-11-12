@@ -57,6 +57,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const payload = await this.jwtService.verifyAsync(token);
       client.userId = payload.sub; // Attacher l'userId au socket
 
+      // Join user-specific room for targeted messages
+      client.join(`user-${client.userId}`);
+
       console.log(`Chat - Token verified successfully`);
       console.log(`Chat - Client connected: ${client.id} (userId: ${client.userId})`);
     } catch (error) {
@@ -105,8 +108,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       payload.content,
     );
 
-    // Broadcast le message à tous les clients dans ce match
+    // Emit to match room (for users who are in the room)
     this.server.to(`match-${payload.matchId}`).emit('message', message);
+
+    // Emit to receiver's user room to ensure delivery even if not in match room
+    // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
+    this.server.to(`user-${payload.receiverId}`).emit('message', message);
 
     return message;
   }

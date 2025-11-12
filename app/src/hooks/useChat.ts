@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect } from 'react'
 import { chatService } from '@/services/chat'
 import { Message, ChatMessage } from '@/types'
-import { userChatStorage } from '@/utils/userChatStorage'
+import { alterDB } from '@/utils/indexedDB'
 
 /**
  * Query keys pour les hooks de chat
@@ -14,12 +13,20 @@ export const chatKeys = {
 }
 
 /**
- * Hook pour récupérer les messages d'un match
- * Charge d'abord depuis le cache local (userChatStorage) pour affichage instantané
- * Puis fetch depuis le serveur en arrière-plan
- * WebSocket gère les mises à jour en temps réel
+ * Hook pour récupérer les messages d'un match avec cursor-based sync
+ *
+ * Stratégie de synchronisation :
+ * - Si pas de cursor (première visite) : charge tous les messages (snapshot)
+ * - Si cursor existe : charge uniquement les nouveaux messages (incremental sync)
+ * - Sauvegarde le cursor après chaque sync
+ * - WebSocket gère les mises à jour en temps réel avec deduplication
+ *
+ * Avantages :
+ * - Pas de race condition entre cache et serveur
+ * - Pas de messages manquants après fermeture de l'app
+ * - Synchronisation efficace (uniquement les nouveaux messages)
  */
-export function useMessages(matchId: string | undefined, limit?: number) {
+export function useMessages(matchId: string | undefined) {
   const queryClient = useQueryClient()
 
   const query = useQuery({
@@ -27,44 +34,60 @@ export function useMessages(matchId: string | undefined, limit?: number) {
     queryFn: async () => {
       if (!matchId) return []
 
-      // Charger depuis le serveur
-      const serverMessages = await chatService.getMatchMessages(matchId, limit)
+      console.log(`🔄 [useMessages] Fetching messages for match ${matchId}`)
 
-      // Sauvegarder dans le cache persistant
-      await userChatStorage.saveMessages(matchId, serverMessages)
+      // Récupérer le dernier sequenceId synchronisé
+      const lastSeq = await alterDB.getLastSequenceId(matchId)
 
-      return serverMessages
+      if (lastSeq === null) {
+        // Première synchronisation : charger tous les messages
+        console.log(`📥 [useMessages] Initial snapshot for match ${matchId}`)
+        const messages = await chatService.getMatchMessages(matchId, 100)
+
+        // Sauvegarder dans IndexedDB
+        await alterDB.saveMessages(matchId, messages)
+
+        // Sauvegarder le cursor si on a des messages
+        if (messages.length > 0) {
+          const maxSeq = Math.max(...messages.map(m => m.sequenceId))
+          await alterDB.setLastSequenceId(matchId, maxSeq)
+          console.log(`✅ [useMessages] Saved cursor: ${maxSeq}`)
+        }
+
+        return messages
+      } else {
+        // Synchronisation incrémentale : charger uniquement les nouveaux messages
+        console.log(`🔄 [useMessages] Incremental sync for match ${matchId} after seq ${lastSeq}`)
+        const newMessages = await chatService.syncMessages(matchId, lastSeq)
+
+        if (newMessages.length > 0) {
+          // Charger les messages existants depuis IndexedDB
+          const cachedMessages = await alterDB.loadMessages(matchId)
+
+          // Fusionner avec les nouveaux messages
+          const mergedMessages = [...cachedMessages, ...newMessages]
+
+          // Sauvegarder dans IndexedDB
+          await alterDB.saveMessages(matchId, mergedMessages)
+
+          // Mettre à jour le cursor
+          const maxSeq = Math.max(...newMessages.map(m => m.sequenceId))
+          await alterDB.setLastSequenceId(matchId, maxSeq)
+          console.log(`✅ [useMessages] Synced ${newMessages.length} new messages, cursor: ${maxSeq}`)
+
+          return mergedMessages
+        } else {
+          // Pas de nouveaux messages, retourner le cache
+          console.log(`✅ [useMessages] No new messages, returning cache`)
+          return await alterDB.loadMessages(matchId)
+        }
+      }
     },
     enabled: !!matchId,
-    staleTime: 1 * 60 * 1000, // 1 minute (les messages changent vite)
-    initialData: () => {
-      // Données initiales depuis le cache local (synchrone, rapide)
-      // Note: On ne peut pas utiliser async ici, donc on retourne undefined
-      // et on charge le cache dans un useEffect séparé
-      return undefined
-    }
+    staleTime: 0, // Toujours refetch pour détecter les nouveaux messages
+    refetchOnMount: true, // Refetch à chaque montage pour récupérer les messages manqués
+    refetchOnWindowFocus: true, // Refetch quand l'utilisateur revient sur l'app
   })
-
-  // Charger le cache local de manière asynchrone au premier rendu
-  useEffect(() => {
-    if (!matchId) return
-
-    const loadCache = async () => {
-      const cachedMessages = await userChatStorage.loadMessages(matchId)
-      if (cachedMessages.length > 0) {
-        // Pré-remplir le cache React Query avec les données locales
-        queryClient.setQueryData<Message[]>(
-          chatKeys.messages(matchId),
-          cachedMessages
-        )
-      }
-    }
-
-    // Charger le cache uniquement si on n'a pas encore de données
-    if (!query.data || query.data.length === 0) {
-      loadCache()
-    }
-  }, [matchId, queryClient])
 
   return query
 }
@@ -121,21 +144,43 @@ export function useMarkAsRead(matchId: string) {
 /**
  * Helper pour ajouter un message au cache sans refetch
  * Utilisé quand un message arrive via WebSocket
- * Sauvegarde aussi dans le cache persistant
+ * Implémente la deduplication basée sur sequenceId
  */
 export function useAddMessageToCache() {
   const queryClient = useQueryClient()
 
   return async (matchId: string, message: Message) => {
-    // Mettre à jour le cache React Query
+    console.log(`📨 [useAddMessageToCache] Adding message ${message.id} (seq: ${message.sequenceId}) to cache`)
+
+    // Mettre à jour le cache React Query avec deduplication
     const updatedMessages = queryClient.setQueryData<Message[]>(
       chatKeys.messages(matchId),
-      (old = []) => [...old, message]
+      (old = []) => {
+        // Vérifier si le message existe déjà (par sequenceId > 0 ou par id)
+        // Les messages optimistes (seq <= 0) ne sont jamais considérés comme doublons
+        if (message.sequenceId > 0) {
+          const exists = old.some(m => m.sequenceId === message.sequenceId || m.id === message.id)
+          if (exists) {
+            console.log(`⚠️ [useAddMessageToCache] Duplicate message detected, ignoring`)
+            return old
+          }
+        }
+
+        // Ajouter le nouveau message
+        return [...old, message]
+      }
     )
 
-    // Sauvegarder dans le cache persistant
+    // Sauvegarder dans IndexedDB
     if (updatedMessages) {
-      await userChatStorage.saveMessages(matchId, updatedMessages)
+      await alterDB.saveMessages(matchId, updatedMessages)
+
+      // Mettre à jour le cursor si c'est le message le plus récent
+      const currentCursor = await alterDB.getLastSequenceId(matchId)
+      if (currentCursor === null || message.sequenceId > currentCursor) {
+        await alterDB.setLastSequenceId(matchId, message.sequenceId)
+        console.log(`✅ [useAddMessageToCache] Updated cursor to ${message.sequenceId}`)
+      }
     }
   }
 }

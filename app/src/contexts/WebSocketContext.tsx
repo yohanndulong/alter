@@ -52,40 +52,68 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     isConnectedRef.current = true
 
     // ========================================
-    // Handler pour les nouveaux messages
+    // Handler pour les nouveaux messages (avec cursor-based sync)
     // ========================================
     const handleNewMessage = async (message: Message) => {
       console.log('📨 WebSocket: New message received', {
         id: message.id,
+        sequenceId: message.sequenceId,
         matchId: message.matchId,
         senderId: message.senderId,
         content: message.content?.substring(0, 50),
         isOwnMessage: message.senderId === user.id,
       })
 
-      // 1. Sauvegarder le message dans IndexedDB
+      // 1. Deduplication basée sur sequenceId
+      const currentCursor = await alterDB.getLastSequenceId(message.matchId)
+      if (currentCursor !== null && message.sequenceId <= currentCursor) {
+        console.log('⚠️ WebSocket: Duplicate message detected (seq <= cursor), ignoring', {
+          messageSeq: message.sequenceId,
+          cursor: currentCursor
+        })
+        return
+      }
+
+      // 2. Sauvegarder le message dans IndexedDB
       await alterDB.addMessage(message.matchId, message)
 
-      // 2. Mettre à jour le cache React Query des messages
+      // 3. Mettre à jour le cursor
+      await alterDB.setLastSequenceId(message.matchId, message.sequenceId)
+      console.log(`✅ WebSocket: Updated cursor to ${message.sequenceId}`)
+
+      // 4. Mettre à jour le cache React Query des messages
       const result = queryClient.setQueryData<Message[]>(
         chatKeys.messages(message.matchId),
         (old = []) => {
-          // Éviter les doublons
-          const exists = old.some(m => m.id === message.id)
+          // Double-check: éviter les doublons par sequenceId ou id
+          const exists = old.some(m => m.sequenceId === message.sequenceId || m.id === message.id)
           if (exists) {
-            console.log('⚠️ WebSocket: Message already exists in cache, ignoring', message.id)
+            console.log('⚠️ WebSocket: Message already exists in React Query cache, ignoring', message.id)
             return old
           }
 
-          // Si c'est notre propre message, supprimer l'optimistic update
+          // Si c'est notre propre message, supprimer TOUS les messages optimistes (sequenceId <= 0)
+          // Cela évite les doublons pour tous les types de messages (text, photo, vocal)
           if (message.senderId === user.id) {
-            const filtered = old.filter(
-              m => !(m.id.startsWith('temp-') && m.content === message.content)
-            )
-            console.log('📝 WebSocket: Replacing optimistic message', {
-              removed: old.length - filtered.length,
-              total: filtered.length + 1
-            })
+            const filtered = old.filter(m => m.sequenceId > 0)
+            const removedCount = old.length - filtered.length
+
+            if (removedCount > 0) {
+              console.log('📝 WebSocket: Replacing optimistic message(s)', {
+                removed: removedCount,
+                total: filtered.length + 1,
+                messageType: message.type,
+                messageSenderId: message.senderId,
+                contextUserId: user.id,
+              })
+            } else {
+              console.log('⚠️ WebSocket: No optimistic message to replace', {
+                messageType: message.type,
+                oldMessagesCount: old.length,
+                oldMessagesWithNegativeSeq: old.filter(m => m.sequenceId <= 0).length,
+              })
+            }
+
             return [...filtered, message]
           }
 
@@ -98,6 +126,12 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       )
 
       console.log('💾 WebSocket: Cache updated, total messages:', result?.length || 0)
+
+      // Sauvegarder dans IndexedDB (après suppression des optimistes)
+      if (result && result.length > 0) {
+        await alterDB.saveMessages(message.matchId, result)
+        console.log(`💾 WebSocket: Saved ${result.length} messages to IndexedDB (optimistic removed)`)
+      }
 
       // 3. Mettre à jour le cache des matches (lastMessage, unreadCount) sans refetch
       if (message.senderId !== user.id) {

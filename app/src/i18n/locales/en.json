@@ -228,7 +228,7 @@
     "question": "Question",
     "photoRejected": "Photo rejected - Sensitive content",
     "photoRejectedByReceiver": "You rejected this photo",
-    "photoRejectedBySender": "Recipient rejected this photo",
+    "photoRejectedBySender": "Photo rejected",
     "photoExpired": "Photo already viewed",
     "photoSent": "Photo sent",
     "photo": "Photo",

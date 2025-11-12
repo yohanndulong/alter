@@ -70,6 +70,40 @@ export class ChatController {
     return this.chatService.getMessages(matchId);
   }
 
+  /**
+   * Cursor-based synchronization endpoint
+   * Returns only messages with sequenceId > after parameter
+   * This enables efficient incremental sync without missing any messages
+   */
+  @Get(':matchId/messages/sync')
+  async syncMessages(
+    @CurrentUser() user: User,
+    @Param('matchId') matchId: string,
+    @Query('after') after?: string,
+  ) {
+    this.validateUuid(matchId);
+
+    // Vérifier que l'utilisateur fait partie de ce match (userId OU matchedUserId)
+    const match = await this.matchRepository.findOne({
+      where: [
+        { id: matchId, userId: user.id, isActive: true },
+        { id: matchId, matchedUserId: user.id, isActive: true },
+      ],
+    });
+
+    if (!match) {
+      throw new NotFoundException('Match not found or access denied');
+    }
+
+    const afterSeq = after ? parseInt(after) : 0;
+
+    if (isNaN(afterSeq)) {
+      throw new BadRequestException('Invalid after parameter: must be a number');
+    }
+
+    return this.chatService.syncMessages(matchId, afterSeq);
+  }
+
   @Post(':matchId/messages')
   async sendMessage(
     @CurrentUser() user: User,
@@ -173,8 +207,12 @@ export class ChatController {
       },
     };
 
-    // Émettre le message via WebSocket
+    // Émettre le message via WebSocket to match room
     this.chatGateway.server.to(`match-${matchId}`).emit('message', response);
+
+    // Emit to receiver's user room to ensure delivery even if not in match room
+    // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
+    this.chatGateway.server.to(`user-${receiverId}`).emit('message', response);
 
     return response;
   }
@@ -249,8 +287,12 @@ export class ChatController {
       },
     };
 
-    // Émettre le message via WebSocket
+    // Émettre le message via WebSocket to match room
     this.chatGateway.server.to(`match-${matchId}`).emit('message', response);
+
+    // Emit to receiver's user room to ensure delivery even if not in match room
+    // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
+    this.chatGateway.server.to(`user-${receiverId}`).emit('message', response);
 
     return response;
   }
@@ -429,10 +471,16 @@ export class ChatController {
       throw new NotFoundException('Media not found or deleted');
     }
 
+    // SÉCURITÉ: Empêcher l'accès aux photos "once" déjà vues
+    // Même avec une URL signée valide, une fois viewed=true, la photo est inaccessible
+    if (media.viewMode === 'once' && media.viewed) {
+      throw new NotFoundException('Media has been viewed and is no longer available');
+    }
+
     res.set({
       'Content-Type': media.mimeType,
       'Content-Length': media.fileSize,
-      'Cache-Control': 'private, max-age=3600',
+      'Cache-Control': media.viewMode === 'once' ? 'no-store, no-cache, must-revalidate' : 'private, max-age=3600',
     });
 
     return new StreamableFile(Buffer.from(media.fileData));

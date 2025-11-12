@@ -745,17 +745,17 @@
 }
 
 .alter-chat-input {
-  padding: var(--spacing-5);
+  padding: var(--spacing-3);
   display: flex;
-  gap: var(--spacing-3);
+  gap: var(--spacing-2);
   background: transparent;
-  align-items: flex-end;
+  align-items: center;
   flex-shrink: 0;
 }
 
 .alter-chat-textarea {
   flex: 1;
-  padding: var(--spacing-3);
+  padding: var(--spacing-2) var(--spacing-3);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -764,6 +764,7 @@
   font-size: var(--font-size-base);
   resize: none;
   overflow-y: hidden;
+  min-height: 36px;
   max-height: 200px;
   transition: border-color var(--transition-fast);
   line-height: 1.5;
@@ -780,13 +781,13 @@
 }
 
 .alter-chat-send-button {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: var(--radius-full);
   background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
   color: white;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   cursor: pointer;
   transition: all var(--transition-fast);
   display: flex;
@@ -880,7 +881,7 @@
   }
 
   .alter-chat-input {
-    padding: var(--spacing-3);
+    padding: var(--spacing-2);
   }
 
   .alter-chat-profile-modal {

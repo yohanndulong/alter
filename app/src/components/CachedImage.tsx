@@ -5,6 +5,7 @@ interface CachedImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string
   alt: string
   fallback?: React.ReactNode
+  disableCache?: boolean // Pour les photos éphémères ("once")
 }
 
 /**
@@ -15,6 +16,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
   src,
   alt,
   fallback,
+  disableCache = false,
   ...props
 }) => {
   const [imageSrc, setImageSrc] = useState<string | null>(null)
@@ -24,6 +26,14 @@ export const CachedImage: React.FC<CachedImageProps> = ({
   useEffect(() => {
     if (!src) {
       setIsLoading(false)
+      return
+    }
+
+    // Si cache désactivé (photos éphémères), charger directement sans cache
+    if (disableCache) {
+      setImageSrc(src)
+      setIsLoading(false)
+      setHasError(false)
       return
     }
 
@@ -50,7 +60,7 @@ export const CachedImage: React.FC<CachedImageProps> = ({
         setHasError(true)
         setIsLoading(false)
       })
-  }, [src])
+  }, [src, disableCache])
 
   if (hasError && fallback) {
     return <>{fallback}</>

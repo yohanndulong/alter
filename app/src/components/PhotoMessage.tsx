@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MessageMedia } from '@/types'
+import { useQueryClient } from '@tanstack/react-query'
+import { MessageMedia, Message } from '@/types'
 import { chatService } from '@/services/chat'
 import { moderationService, ModerationResult } from '@/services/moderation'
 import { CachedImage } from './CachedImage'
 import { imageCache } from '@/services/imagePreloader'
+import { chatKeys } from '@/hooks'
+import { alterDB } from '@/utils/indexedDB'
 import './PhotoMessage.css'
 
 export interface PhotoMessageProps {
@@ -16,12 +19,14 @@ export interface PhotoMessageProps {
 
 export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, matchId, isReceiver }) => {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+
   // Pour les photos "once" envoyées, ne pas les révéler automatiquement
+  // Pour les photos "once" déjà vues, ne pas les révéler non plus
   const [isRevealed, setIsRevealed] = useState(
-    (isSent && media.viewMode !== 'once') ||
     media.viewMode === 'unlimited' ||
-    media.viewed ||
-    false
+    (isSent && media.viewMode !== 'once') ||
+    (media.viewed && media.viewMode !== 'once')
   )
   const [countdown, setCountdown] = useState(media.viewDuration || 0)
   const [showFullscreen, setShowFullscreen] = useState(false)
@@ -31,6 +36,36 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const hasAnalyzed = useRef(false)
+
+  // Helper pour mettre à jour le statut "viewed" dans le cache et IndexedDB
+  const updateMediaViewedStatus = async () => {
+    console.log('🔄 Updating media viewed status in cache and IndexedDB')
+
+    // Mettre à jour React Query cache
+    queryClient.setQueryData<Message[]>(
+      chatKeys.messages(matchId),
+      (old = []) => old.map(msg => {
+        if (msg.media?.id === media.id) {
+          return {
+            ...msg,
+            media: {
+              ...msg.media,
+              viewed: true,
+              viewedAt: new Date(),
+            }
+          }
+        }
+        return msg
+      })
+    )
+
+    // Sauvegarder dans IndexedDB
+    const messages = queryClient.getQueryData<Message[]>(chatKeys.messages(matchId))
+    if (messages) {
+      await alterDB.saveMessages(matchId, messages)
+      console.log('✅ Media viewed status saved to cache and IndexedDB')
+    }
+  }
 
   // Utiliser directement media.receiverStatus au lieu d'un état local
   // Cela permet aux mises à jour WebSocket de fonctionner correctement
@@ -128,45 +163,70 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     // Empêcher de revoir une photo "once" déjà vue
     if (media.viewMode === 'once' && (media.viewed || localViewed)) return
 
+    // Si mode "once", PRÉCHARGER l'image AVANT de la marquer comme viewed
+    // Sinon le backend supprime fileData avant que le navigateur ne charge l'image
+    if (media.viewMode === 'once' && media.url) {
+      console.log('📥 Preloading once photo before marking as viewed')
+      try {
+        // Précharger l'image dans le cache local
+        await imageCache.loadImage(media.url)
+        console.log('✅ Once photo preloaded to cache')
+      } catch (error) {
+        console.error('Failed to preload image:', error)
+        // Continuer quand même
+      }
+    }
+
     setIsRevealed(true)
 
-    // Si mode "once", démarrer le compte à rebours
-    if (media.viewMode === 'once' && media.viewDuration) {
-      setCountdown(media.viewDuration)
+    // Si mode "once", marquer comme vue IMMÉDIATEMENT (après préchargement)
+    // Cela empêche le replay même si l'app est fermée pendant le countdown
+    if (media.viewMode === 'once') {
+      setLocalViewed(true)
 
-      countdownIntervalRef.current = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            // Masquer la photo
-            setIsRevealed(false)
-            // Marquer comme vue APRÈS le countdown
-            setLocalViewed(true)
+      // Appeler l'API IMMÉDIATEMENT pour marquer comme vue et supprimer le fichier
+      if (isReceiver && !media.viewed) {
+        console.log('🔒 Marking once photo as viewed immediately on reveal')
+        try {
+          await chatService.markPhotoAsViewed(matchId, media.id)
+          // Mettre à jour le cache React Query et IndexedDB
+          await updateMediaViewedStatus()
+        } catch (error) {
+          console.error('Failed to mark photo as viewed:', error)
+        }
+      }
 
-            // Appeler l'API pour marquer comme vue (supprime le fichier côté serveur)
-            if (isReceiver && !media.viewed) {
-              chatService.markPhotoAsViewed(matchId, media.id).catch(error => {
-                console.error('Failed to mark photo as viewed:', error)
-              })
+      // Démarrer le compte à rebours pour masquer la photo
+      if (media.viewDuration) {
+        setCountdown(media.viewDuration)
+
+        countdownIntervalRef.current = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              // Masquer la photo à la fin du countdown
+              setIsRevealed(false)
+
+              // Supprimer du cache côté client
+              if (media.url) {
+                imageCache.removeFromCache(media.url)
+              }
+
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current)
+              }
+              return 0
             }
-
-            // Supprimer du cache côté client
-            if (media.url) {
-              imageCache.removeFromCache(media.url)
-            }
-
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current)
-            }
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+            return prev - 1
+          })
+        }, 1000)
+      }
     } else {
       // Photo unlimited - marquer comme vue immédiatement
       if (isReceiver && !media.viewed) {
         try {
           await chatService.markPhotoAsViewed(matchId, media.id)
+          // Mettre à jour le cache React Query et IndexedDB
+          await updateMediaViewedStatus()
         } catch (error) {
           console.error('Failed to mark photo as viewed:', error)
         }
@@ -219,47 +279,72 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
     setIsProcessing(true)
     try {
       await chatService.acceptMedia(matchId, media.id)
+
+      // Si mode "once", PRÉCHARGER l'image AVANT de la marquer comme viewed
+      // Sinon le backend supprime fileData avant que le navigateur ne charge l'image
+      if (media.viewMode === 'once' && media.url) {
+        console.log('📥 Preloading once photo before marking as viewed')
+        try {
+          // Précharger l'image dans le cache local
+          await imageCache.loadImage(media.url)
+          console.log('✅ Once photo preloaded to cache')
+        } catch (error) {
+          console.error('Failed to preload image:', error)
+          // Continuer quand même
+        }
+      }
+
       // Le WebSocket mettra à jour le cache automatiquement
       // On révèle l'image immédiatement pour une meilleure UX
       setIsRevealed(true)
 
-      // Si mode "once", démarrer le compte à rebours
-      if (media.viewMode === 'once' && media.viewDuration) {
-        setCountdown(media.viewDuration)
+      // Marquer comme vue IMMÉDIATEMENT (dès l'acceptation, après préchargement)
+      if (media.viewMode === 'once') {
+        setLocalViewed(true)
 
-        countdownIntervalRef.current = setInterval(() => {
-          setCountdown(prev => {
-            if (prev <= 1) {
-              // Masquer la photo
-              setIsRevealed(false)
-              // Marquer comme vue APRÈS le countdown
-              setLocalViewed(true)
+        // Appeler l'API IMMÉDIATEMENT pour marquer comme vue et supprimer le fichier
+        if (!media.viewed) {
+          console.log('🔒 Marking once photo as viewed immediately on accept')
+          try {
+            await chatService.markPhotoAsViewed(matchId, media.id)
+            // Mettre à jour le cache React Query et IndexedDB
+            await updateMediaViewedStatus()
+          } catch (error) {
+            console.error('Failed to mark photo as viewed:', error)
+          }
+        }
 
-              // Appeler l'API pour marquer comme vue (supprime le fichier côté serveur)
-              if (!media.viewed) {
-                chatService.markPhotoAsViewed(matchId, media.id).catch(error => {
-                  console.error('Failed to mark photo as viewed:', error)
-                })
+        // Démarrer le compte à rebours pour masquer la photo
+        if (media.viewDuration) {
+          setCountdown(media.viewDuration)
+
+          countdownIntervalRef.current = setInterval(() => {
+            setCountdown(prev => {
+              if (prev <= 1) {
+                // Masquer la photo à la fin du countdown
+                setIsRevealed(false)
+
+                // Supprimer du cache côté client
+                if (media.url) {
+                  imageCache.removeFromCache(media.url)
+                }
+
+                if (countdownIntervalRef.current) {
+                  clearInterval(countdownIntervalRef.current)
+                }
+                return 0
               }
-
-              // Supprimer du cache côté client
-              if (media.url) {
-                imageCache.removeFromCache(media.url)
-              }
-
-              if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current)
-              }
-              return 0
-            }
-            return prev - 1
-          })
-        }, 1000)
+              return prev - 1
+            })
+          }, 1000)
+        }
       } else {
         // Photo unlimited - marquer comme vue immédiatement
         if (!media.viewed) {
           try {
             await chatService.markPhotoAsViewed(matchId, media.id)
+            // Mettre à jour le cache React Query et IndexedDB
+            await updateMediaViewedStatus()
           } catch (error) {
             console.error('Failed to mark photo as viewed:', error)
           }
@@ -379,7 +464,7 @@ export const PhotoMessage: React.FC<PhotoMessageProps> = ({ media, isSent, match
             )}
           </button>
         )
-      ) : media.viewMode === 'once' && (media.viewed || localViewed) && !isSent ? (
+      ) : media.viewMode === 'once' && (media.viewed || localViewed) && !isSent && !isRevealed ? (
         <div className="photo-message-expired">
           <div className="photo-message-expired-icon">👁️</div>
           <div className="photo-message-expired-text">
