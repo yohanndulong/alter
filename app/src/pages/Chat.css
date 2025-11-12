@@ -690,3 +690,271 @@
   line-height: var(--line-height-relaxed);
   margin: 0;
 }
+
+/* ===== Skeleton Loader ===== */
+.chat-quality-skeleton {
+  padding: var(--spacing-6) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  align-items: center;
+}
+
+.chat-quality-skeleton-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.chat-quality-skeleton-logo {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.chat-quality-skeleton-text {
+  font-size: var(--font-size-sm);
+  animation: fadeInOut 2s ease-in-out infinite;
+  transition: opacity 0.3s ease;
+}
+
+.chat-quality-skeleton-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  position: relative;
+}
+
+.chat-quality-skeleton-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    var(--color-secondary)
+  );
+  border-radius: var(--radius-full);
+  animation: progressSlide 1.5s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.5);
+}
+
+.chat-quality-skeleton-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-6) 0;
+}
+
+.chat-quality-skeleton-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: var(--color-background);
+  border: 3px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-quality-skeleton-circle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--color-primary-rgb), 0.1),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+.chat-quality-skeleton-percentage {
+  width: 80px;
+  height: 30px;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-quality-skeleton-percentage::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+.chat-quality-skeleton-label {
+  width: 100px;
+  height: 20px;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-quality-skeleton-label::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite 0.2s;
+}
+
+.chat-quality-skeleton-analysis {
+  width: 100%;
+  padding: var(--spacing-4);
+  background: var(--color-background);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+}
+
+.chat-quality-skeleton-analysis-title {
+  width: 120px;
+  height: 20px;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-quality-skeleton-analysis-title::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite 0.4s;
+}
+
+.chat-quality-skeleton-analysis-line {
+  width: 100%;
+  height: 16px;
+  background: var(--color-background-secondary);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-quality-skeleton-analysis-line.short {
+  width: 70%;
+}
+
+.chat-quality-skeleton-analysis-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 2s infinite;
+}
+
+.chat-quality-skeleton-analysis-line:nth-child(2)::before {
+  animation-delay: 0.6s;
+}
+
+.chat-quality-skeleton-analysis-line:nth-child(3)::before {
+  animation-delay: 0.8s;
+}
+
+.chat-quality-skeleton-analysis-line:nth-child(4)::before {
+  animation-delay: 1s;
+}
+
+.chat-quality-skeleton-footer {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  text-align: center;
+  font-style: italic;
+  margin-top: var(--spacing-2);
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes fadeInOut {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes progressSlide {
+  0% {
+    left: -30%;
+  }
+  50% {
+    left: 50%;
+  }
+  100% {
+    left: 100%;
+  }
+}

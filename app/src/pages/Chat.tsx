@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage, VoiceRecorder, CameraCapture, LoadingMoreIndicator } from '@/components'
+import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage, VoiceRecorder, CameraCapture, LoadingMoreIndicator, Logo } from '@/components'
 import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message, Match, PhotoViewMode } from '@/types'
@@ -413,6 +413,22 @@ export const Chat: React.FC = () => {
     setShowQualityModal(true)
     setIsLoadingQuality(true)
 
+    // Textes qui changent pendant l'analyse
+    const loadingSteps = [
+      'Lecture des messages...',
+      'Analyse des échanges...',
+      'Calcul des scores...',
+      'Finalisation...'
+    ]
+    let currentStep = 0
+    const stepInterval = setInterval(() => {
+      currentStep = (currentStep + 1) % loadingSteps.length
+      const stepElement = document.querySelector('.chat-quality-skeleton-text')
+      if (stepElement) {
+        stepElement.textContent = loadingSteps[currentStep]
+      }
+    }, 2000)
+
     try {
       const result = await chatService.analyzeConversationQuality(matchId)
       console.log('Quality analysis result:', result)
@@ -427,6 +443,7 @@ export const Chat: React.FC = () => {
       showError('Impossible d\'analyser la qualité de la conversation')
       setShowQualityModal(false)
     } finally {
+      clearInterval(stepInterval)
       setIsLoadingQuality(false)
     }
   }
@@ -787,8 +804,35 @@ export const Chat: React.FC = () => {
           <h2 className="chat-quality-modal-title">{t('chat.qualityDetails')}</h2>
 
           {isLoadingQuality ? (
-            <div className="chat-quality-loading">
-              <p>{t('chat.qualityAnalyzing')}</p>
+            <div className="chat-quality-skeleton">
+              <div className="chat-quality-skeleton-header">
+                <div className="chat-quality-skeleton-logo">
+                  <Logo variant="icon" size={32} />
+                </div>
+                <span className="chat-quality-skeleton-text">Lecture des messages...</span>
+              </div>
+
+              <div className="chat-quality-skeleton-progress">
+                <div className="chat-quality-skeleton-progress-bar"></div>
+              </div>
+
+              <div className="chat-quality-skeleton-score">
+                <div className="chat-quality-skeleton-circle">
+                  <div className="chat-quality-skeleton-percentage"></div>
+                </div>
+                <div className="chat-quality-skeleton-label"></div>
+              </div>
+
+              <div className="chat-quality-skeleton-analysis">
+                <div className="chat-quality-skeleton-analysis-title"></div>
+                <div className="chat-quality-skeleton-analysis-line"></div>
+                <div className="chat-quality-skeleton-analysis-line"></div>
+                <div className="chat-quality-skeleton-analysis-line short"></div>
+              </div>
+
+              <div className="chat-quality-skeleton-footer">
+                Cela peut prendre quelques secondes
+              </div>
             </div>
           ) : qualityDetails ? (
             <>

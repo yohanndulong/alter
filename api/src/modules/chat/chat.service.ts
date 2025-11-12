@@ -246,6 +246,7 @@ export class ChatService {
       const response = await this.llmService.chat(llmMessages, {
         jsonMode: true,
         temperature: 0.3,
+        maxTokens: 2000, // Augmenter pour éviter les réponses tronquées
       });
 
       // Nettoyer la réponse (retirer les backticks markdown si présents)
@@ -259,24 +260,81 @@ export class ChatService {
         cleanedContent = cleanedContent.substring(0, cleanedContent.lastIndexOf('```')).trim();
       }
 
-      const parsedResult = JSON.parse(cleanedContent);
+      let parsedResult;
+      try {
+        parsedResult = JSON.parse(cleanedContent);
+      } catch (parseError) {
+        this.logger.error('❌ Failed to parse LLM JSON response:', parseError.message);
+        this.logger.warn('Raw content length:', cleanedContent.length);
+        this.logger.warn('Content preview:', cleanedContent.substring(0, 500));
 
-      // Support de l'ancien format {score, feedback} et du nouveau {overallScore, respect, ...}
+        // Tentative de réparation : compléter les accolades/guillemets manquants
+        let repairedContent = cleanedContent;
+
+        // Compter les accolades/crochets pour détecter un JSON incomplet
+        const openBraces = (repairedContent.match(/{/g) || []).length;
+        const closeBraces = (repairedContent.match(/}/g) || []).length;
+
+        if (openBraces > closeBraces) {
+          this.logger.warn(`Incomplete JSON detected: ${openBraces} open braces vs ${closeBraces} close braces`);
+          // Ajouter les accolades manquantes
+          repairedContent += '"}'.repeat(openBraces - closeBraces);
+
+          try {
+            parsedResult = JSON.parse(repairedContent);
+            this.logger.log('✅ Successfully repaired and parsed JSON');
+          } catch (repairError) {
+            this.logger.error('❌ Failed to repair JSON, using fallback');
+            throw parseError; // Relancer l'erreur originale pour le catch principal
+          }
+        } else {
+          throw parseError;
+        }
+      }
+
+      // Support de différents formats de réponse du LLM
       let result;
+
+      // Format 1 : Ancien format simple {score, feedback}
       if (parsedResult.score !== undefined && parsedResult.feedback !== undefined) {
-        // Ancien format - mapper vers le nouveau
         this.logger.warn('LLM returned old format {score, feedback}, mapping to new format');
         result = {
           overallScore: parsedResult.score,
-          respect: parsedResult.score, // Approximation
+          respect: parsedResult.score,
           engagement: parsedResult.score,
           depth: parsedResult.score,
           positivity: parsedResult.score,
           analysis: parsedResult.feedback,
         };
-      } else {
-        // Nouveau format
+      }
+      // Format 2 : Nouveau format détaillé avec objets imbriqués
+      else if (parsedResult.global !== undefined) {
+        this.logger.log('LLM returned detailed nested format, extracting scores');
+        result = {
+          overallScore: parsedResult.global?.score || 0,
+          respect: parsedResult.respect?.score || 0,
+          engagement: parsedResult.engagement?.score || 0,
+          depth: parsedResult.profondeur?.score || 0, // "profondeur" en français
+          positivity: parsedResult.positivite?.score || 0, // "positivite" en français
+          analysis: parsedResult.global?.verdict || parsedResult.global?.commentaire || 'Analyse non disponible',
+        };
+      }
+      // Format 3 : Format flat direct {overallScore, respect, ...}
+      else if (parsedResult.overallScore !== undefined) {
         result = parsedResult;
+      }
+      // Format inconnu
+      else {
+        this.logger.warn('Unknown LLM response format, using default values');
+        this.logger.warn(`Response structure: ${JSON.stringify(Object.keys(parsedResult))}`);
+        result = {
+          overallScore: 50,
+          respect: 50,
+          engagement: 50,
+          depth: 50,
+          positivity: 50,
+          analysis: 'Format de réponse inattendu du LLM.',
+        };
       }
 
       this.logger.log(`✅ Conversation analyzed: ${result.overallScore}% overall quality`);
