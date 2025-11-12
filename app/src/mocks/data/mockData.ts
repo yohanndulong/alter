@@ -198,6 +198,7 @@ export function generateMessage(
 
   return {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    sequenceId: Date.now(), // Auto-increment mock
     matchId,
     senderId,
     receiverId,
@@ -293,6 +294,7 @@ export function generateAiChatMessage(
 ): ChatMessage {
   return {
     id: `ai-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    sequenceId: Date.now(), // Auto-increment mock
     role,
     content,
     timestamp: new Date(),

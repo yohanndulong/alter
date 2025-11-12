@@ -156,6 +156,7 @@ export function addMessage(
 
   const newMessage: Message = {
     id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    sequenceId: Date.now(), // Auto-increment mock
     matchId,
     senderId,
     receiverId,

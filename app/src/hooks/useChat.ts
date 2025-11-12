@@ -27,8 +27,6 @@ export const chatKeys = {
  * - Synchronisation efficace (uniquement les nouveaux messages)
  */
 export function useMessages(matchId: string | undefined) {
-  const queryClient = useQueryClient()
-
   const query = useQuery({
     queryKey: chatKeys.messages(matchId || ''),
     queryFn: async () => {

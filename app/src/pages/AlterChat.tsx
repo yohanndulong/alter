@@ -179,6 +179,7 @@ export const AlterChat: React.FC = () => {
     if (!isLoading && messages.length === 0) {
       const welcomeMessage: ChatMessage = {
         id: 'welcome',
+        sequenceId: -1, // Message local
         role: 'assistant' as const,
         content: t('chat.alterWelcome'),
         timestamp: new Date(),
@@ -261,6 +262,7 @@ export const AlterChat: React.FC = () => {
     const tempId = `temp-${Date.now()}`
     const optimisticMessage: ChatMessage = {
       id: tempId,
+      sequenceId: -1, // Message optimiste
       role: 'user',
       content,
       timestamp: new Date(),
@@ -330,6 +332,7 @@ export const AlterChat: React.FC = () => {
     const tempId = `temp-${Date.now()}`
     const optimisticMessage: ChatMessage = {
       id: tempId,
+      sequenceId: -1, // Message optimiste
       role: 'user',
       content,
       timestamp: new Date(),
@@ -363,6 +366,7 @@ export const AlterChat: React.FC = () => {
     const tempId = `temp-${Date.now()}`
     const optimisticMessage: ChatMessage = {
       id: tempId,
+      sequenceId: -1, // Message optimiste
       role: 'user',
       content: intentionMessage,
       timestamp: new Date(),
