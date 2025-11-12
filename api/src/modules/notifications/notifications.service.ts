@@ -105,6 +105,15 @@ export class NotificationsService implements OnModuleInit {
     data?: Record<string, string>,
   ): Promise<void> {
     try {
+      this.logger.log(`\n========== 📲 ENVOI NOTIFICATION ==========`);
+      this.logger.log(`👤 Destinataire: ${userId}`);
+      this.logger.log(`📋 Type: ${data?.type || 'unknown'}`);
+      this.logger.log(`📝 Titre: ${title}`);
+      this.logger.log(`💬 Message: ${body}`);
+      if (data && Object.keys(data).length > 0) {
+        this.logger.log(`🔗 Data: ${JSON.stringify(data)}`);
+      }
+
       // Récupérer tous les tokens actifs de l'utilisateur
       const tokens = await this.fcmTokenRepository.find({
         where: { userId, isActive: true },
@@ -112,8 +121,14 @@ export class NotificationsService implements OnModuleInit {
 
       if (tokens.length === 0) {
         this.logger.warn(`⚠️ Aucun token FCM actif pour l'utilisateur ${userId}`);
+        this.logger.log(`========== FIN NOTIFICATION (AUCUN TOKEN) ==========\n`);
         return;
       }
+
+      this.logger.log(`📱 ${tokens.length} token(s) FCM trouvé(s)`);
+      tokens.forEach((token, index) => {
+        this.logger.log(`  Token ${index + 1}: ${token.token.substring(0, 20)}... (${token.platform})`);
+      });
 
       // Préparer le message
       const message = {
@@ -129,13 +144,22 @@ export class NotificationsService implements OnModuleInit {
       if (admin.apps.length > 0) {
         const response = await admin.messaging().sendEachForMulticast(message);
 
-        this.logger.log(`📲 Notification envoyée à ${response.successCount}/${tokens.length} appareils pour l'utilisateur ${userId}`);
+        this.logger.log(`✅ Notification envoyée à ${response.successCount}/${tokens.length} appareils`);
+
+        if (response.successCount > 0) {
+          this.logger.log(`🎉 ${response.successCount} notification(s) délivrée(s) avec succès`);
+        }
 
         // Désactiver les tokens invalides
         if (response.failureCount > 0) {
+          this.logger.warn(`❌ ${response.failureCount} notification(s) échouée(s)`);
+
           const failedTokens: string[] = [];
           response.responses.forEach((resp, idx) => {
             if (!resp.success) {
+              const errorCode = resp.error?.code || 'unknown';
+              const errorMessage = resp.error?.message || 'No error message';
+              this.logger.error(`  ❌ Token ${idx + 1} (${tokens[idx].platform}): ${errorCode} - ${errorMessage}`);
               failedTokens.push(tokens[idx].token);
             }
           });
@@ -145,14 +169,18 @@ export class NotificationsService implements OnModuleInit {
               { token: In(failedTokens) },
               { isActive: false },
             );
-            this.logger.warn(`⚠️ ${failedTokens.length} tokens invalides désactivés`);
+            this.logger.warn(`🗑️ ${failedTokens.length} tokens invalides désactivés`);
           }
         }
+
+        this.logger.log(`========== FIN NOTIFICATION (SUCCÈS) ==========\n`);
       } else {
         this.logger.warn('⚠️ Firebase Admin SDK non initialisé - Impossible d\'envoyer la notification');
+        this.logger.log(`========== FIN NOTIFICATION (SDK NON INITIALISÉ) ==========\n`);
       }
     } catch (error) {
-      this.logger.error(`❌ Erreur lors de l'envoi de la notification à l'utilisateur ${userId}:`, error);
+      this.logger.error(`❌ ERREUR lors de l'envoi de la notification à l'utilisateur ${userId}:`, error);
+      this.logger.log(`========== FIN NOTIFICATION (ERREUR) ==========\n`);
     }
   }
 
@@ -165,6 +193,8 @@ export class NotificationsService implements OnModuleInit {
     messageContent: string,
     matchId: string,
   ): Promise<void> {
+    this.logger.log(`📨 Préparation notification MESSAGE: ${senderName} → User ${receiverId}`);
+
     await this.sendNotificationToUser(
       receiverId,
       `Nouveau message de ${senderName}`,
@@ -184,13 +214,34 @@ export class NotificationsService implements OnModuleInit {
     matchedUserName: string,
     matchId: string,
   ): Promise<void> {
+    this.logger.log(`💕 Préparation notification MATCH: User ${userId} a matché avec ${matchedUserName} (Match ID: ${matchId})`);
+
     await this.sendNotificationToUser(
       userId,
-      'Nouveau match !',
+      'Nouveau match ! 💕',
       `Vous avez matché avec ${matchedUserName} !`,
       {
         type: 'new_match',
         matchId,
+      },
+    );
+  }
+
+  /**
+   * Envoie une notification pour un nouveau like
+   */
+  async sendNewLikeNotification(
+    userId: string,
+    likerName: string,
+  ): Promise<void> {
+    this.logger.log(`💖 Préparation notification LIKE: ${likerName} a liké User ${userId}`);
+
+    await this.sendNotificationToUser(
+      userId,
+      'Quelqu\'un vous aime ! 💖',
+      `${likerName} vous a liké !`,
+      {
+        type: 'new_like',
       },
     );
   }

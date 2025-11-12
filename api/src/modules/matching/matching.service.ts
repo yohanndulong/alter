@@ -377,6 +377,24 @@ export class MatchingService {
       return { match: true, matchData: match };
     }
 
+    // Envoyer une notification push à l'utilisateur liké (si pas de match)
+    try {
+      const liker = await this.userRepository.findOne({ where: { id: userId } });
+      if (liker) {
+        this.logger.log(`💖 Envoi notification LIKE: ${liker.name} (${userId}) → User ${likedUserId}`);
+
+        await this.notificationsService.sendNewLikeNotification(
+          likedUserId,
+          liker.name,
+        );
+
+        this.logger.log(`✅ Notification LIKE envoyée avec succès`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Erreur lors de l'envoi de la notification de like: ${error.message}`);
+      // Ne pas échouer le like si la notification échoue
+    }
+
     return { match: false };
   }
 
@@ -428,26 +446,25 @@ export class MatchingService {
     });
 
     await this.matchRepository.save(match);
-    this.logger.log(`✅ Created single match: ${userId1} <-> ${userId2}`);
+    this.logger.log(`✅ Match créé: ${user1.name} (${userId1}) <-> ${user2.name} (${userId2})`);
 
-    // Envoyer des notifications push aux deux utilisateurs
+    // Envoyer une notification push UNIQUEMENT à userId1 (celui qui a liké en premier)
+    // userId2 vient de créer le match en likant, il ne reçoit pas de notification
     try {
-      // Notification pour userId1
+      this.logger.log(`💕 Envoi notification MATCH: ${user1.name} (${userId1}) matché avec ${user2.name}`);
+      this.logger.log(`  → Notification envoyée à ${userId1} (premier liker, reçoit la notification)`);
+      this.logger.log(`  → ${userId2} ne reçoit PAS de notification (a créé le match en likant)`);
+
       await this.notificationsService.sendNewMatchNotification(
         userId1,
         user2.name,
         match.id,
       );
 
-      // Notification pour userId2
-      await this.notificationsService.sendNewMatchNotification(
-        userId2,
-        user1.name,
-        match.id,
-      );
+      this.logger.log(`✅ Notification MATCH envoyée avec succès`);
     } catch (error) {
-      this.logger.error(`❌ Erreur lors de l'envoi des notifications push pour le match: ${error.message}`);
-      // Ne pas échouer la création du match si les notifications échouent
+      this.logger.error(`❌ Erreur lors de l'envoi de la notification push pour le match: ${error.message}`);
+      // Ne pas échouer la création du match si la notification échoue
     }
 
     return match;

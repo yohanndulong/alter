@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import Firebase
+import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +9,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Configure Firebase
+        FirebaseApp.configure()
+
+        // Configure Firebase Messaging
+        Messaging.messaging().delegate = self
+
+        // Request notification permissions
+        UNUserNotificationCenter.current().delegate = self
+
+        let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+        UNUserNotificationCenter.current().requestAuthorization(
+            options: authOptions,
+            completionHandler: { granted, error in
+                if granted {
+                    print("✅ Notification permission granted")
+                } else {
+                    print("⚠️ Notification permission denied")
+                }
+            }
+        )
+
+        application.registerForRemoteNotifications()
+
         return true
     }
 
@@ -46,4 +70,49 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // APNs token registration
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        print("📱 APNs device token registered")
+        Messaging.messaging().apnsToken = deviceToken
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("❌ Failed to register for remote notifications: \(error.localizedDescription)")
+    }
+
+}
+
+// MARK: - MessagingDelegate
+extension AppDelegate: MessagingDelegate {
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        print("📲 Firebase FCM token: \(fcmToken ?? "nil")")
+
+        // Le token FCM sera automatiquement géré par le plugin Capacitor Push Notifications
+        // Il sera envoyé au backend via notificationService.initialize()
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+extension AppDelegate: UNUserNotificationCenterDelegate {
+    // Notification reçue quand l'app est au premier plan
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let userInfo = notification.request.content.userInfo
+        print("🔔 Notification received in foreground: \(userInfo)")
+
+        // Afficher la notification même quand l'app est au premier plan
+        completionHandler([[.banner, .sound, .badge]])
+    }
+
+    // Notification tapée par l'utilisateur
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        print("👆 Notification tapped: \(userInfo)")
+
+        // Le plugin Capacitor Push Notifications gère automatiquement la navigation
+        completionHandler()
+    }
 }

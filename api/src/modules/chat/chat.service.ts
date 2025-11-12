@@ -119,12 +119,16 @@ export class ChatService {
           ? content.substring(0, 97) + '...'
           : content;
 
+        this.logger.log(`📤 Envoi notification de message: ${sender.name} (${senderId}) → ${receiverId}`);
+
         await this.notificationsService.sendNewMessageNotification(
           receiverId,
           sender.name,
           messagePreview,
           matchId,
         );
+
+        this.logger.log(`✅ Notification de message envoyée avec succès`);
       }
     } catch (error) {
       this.logger.error(`❌ Erreur lors de l'envoi de la notification push: ${error.message}`);

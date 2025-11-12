@@ -252,8 +252,11 @@ export const Discover: React.FC = () => {
       const result = await matchingService.likeProfile(targetId)
       if (result.match && result.matchData) {
         setMatchModal({ isOpen: true, match: result.matchData })
-        // Invalider le cache pour recharger les profils intéressés
+
+        // Invalider les caches pour afficher le nouveau match
+        console.log('🎉 [Discover] New match! Invalidating caches')
         queryClient.invalidateQueries({ queryKey: matchingKeys.interested() })
+        queryClient.invalidateQueries({ queryKey: matchingKeys.matches() })
       } else {
         success(t('discover.like'))
       }
@@ -323,6 +326,9 @@ export const Discover: React.FC = () => {
 
   const handleCloseMatchModal = () => {
     setMatchModal({ isOpen: false })
+    // S'assurer que le cache est invalidé pour que le nouveau match apparaisse dans la liste
+    queryClient.invalidateQueries({ queryKey: matchingKeys.matches() })
+    console.log('✅ [Discover] Match modal closed, matches cache invalidated')
   }
 
   const handleClosePremiumModal = () => {

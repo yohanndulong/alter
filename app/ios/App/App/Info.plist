@@ -57,5 +57,10 @@
 	<string>Alter needs permission to save photos to your photo library.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Alter needs access to your microphone to send voice messages in conversations.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
 </dict>
 </plist>

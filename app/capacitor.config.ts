@@ -14,11 +14,18 @@ const config: CapacitorConfig = {
       promptLabelCancel: 'Annuler',
       promptLabelPhoto: 'Depuis la galerie',
       promptLabelPicture: 'Prendre une photo'
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert']
     }
   },
   android: {
     // Permettre l'accès aux fichiers
     allowMixedContent: true
+  },
+  ios: {
+    // Configuration iOS
+    contentInset: 'automatic'
   }
 };
 

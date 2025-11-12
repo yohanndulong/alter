@@ -27,15 +27,19 @@ export function useMatches() {
   const query = useQuery({
     queryKey: matchingKeys.matches(),
     queryFn: async () => {
+      console.log('🔄 [useMatches] Fetching matches from server')
       // Charger depuis le serveur
       const matches = await matchingService.getMatches()
 
       // Sauvegarder dans le cache persistant
       await matchesStorage.saveMatches(matches)
+      console.log('✅ [useMatches] Matches fetched and cached:', matches.length)
 
       return matches
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2 * 60 * 1000, // 2 minutes (réduit pour refetch plus souvent)
+    refetchOnWindowFocus: true, // Refetch quand l'utilisateur revient sur l'app
+    refetchOnMount: 'always', // Toujours refetch au montage si les données sont stale
   })
 
   // Charger le cache local de manière asynchrone au premier rendu
