@@ -297,13 +297,16 @@ export const Chat: React.FC = () => {
     const messageContent = input.trim()
     setInput('')
 
+    // Déterminer le receiverId (l'autre utilisateur du match)
+    const receiverId = match.userId === user.id ? match.matchedUserId : match.userId
+
     // Créer un message optimiste avec un ID temporaire
     const optimisticMessage: Message = {
       id: `temp-${Date.now()}-${Math.random()}`,
       sequenceId: -1, // Placeholder - sera remplacé par le vrai sequenceId du serveur
       content: messageContent,
       senderId: user.id,
-      receiverId: match.matchedUserId,
+      receiverId,
       matchId,
       type: 'text',
       createdAt: new Date(),
@@ -314,10 +317,10 @@ export const Chat: React.FC = () => {
     // Ajouter immédiatement au cache pour affichage instantané
     addMessageToCache(matchId, optimisticMessage)
 
-    // Envoyer le message via WebSocket (userId extrait du JWT côté serveur)
+    // Envoyer le message via WebSocket
+    // Le receiverId est déterminé automatiquement côté serveur pour la sécurité
     chatService.sendMessageWS(
       matchId,
-      match.matchedUserId,
       messageContent
     )
 
@@ -439,12 +442,15 @@ export const Chat: React.FC = () => {
     const tempUrl = URL.createObjectURL(photo.blob)
     const tempMessageId = `temp-${Date.now()}-${Math.random()}`
 
+    // Déterminer le receiverId (l'autre utilisateur du match)
+    const receiverId = match.userId === user.id ? match.matchedUserId : match.userId
+
     // Créer un message optimiste pour affichage instantané
     const optimisticMessage: Message = {
       id: tempMessageId,
       sequenceId: -1, // Placeholder - sera remplacé par le vrai sequenceId du serveur
       senderId: user.id,
-      receiverId: match.matchedUserId,
+      receiverId,
       matchId,
       type: 'photo',
       createdAt: new Date(),

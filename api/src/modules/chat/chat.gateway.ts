@@ -11,10 +11,11 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { MediaService } from './media.service';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
+import { Match } from '../matching/entities/match.entity';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -28,12 +29,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  private readonly logger = new Logger(ChatGateway.name);
+
   constructor(
     private readonly chatService: ChatService,
     private readonly mediaService: MediaService,
     private readonly jwtService: JwtService,
     @InjectRepository(Message)
     private readonly messageRepository: Repository<Message>,
+    @InjectRepository(Match)
+    private readonly matchRepository: Repository<Match>,
   ) {
     // S'enregistrer auprès du MediaService pour les notifications
     this.mediaService.setGateway(this);
@@ -92,7 +97,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: {
       matchId: string;
-      receiverId: string;
       content: string;
     },
   ) {
@@ -100,11 +104,31 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    // Utiliser l'userId du token JWT, pas celui du payload
+    // Récupérer le match pour déterminer le receiverId de manière sécurisée
+    const match = await this.matchRepository.findOne({
+      where: [
+        { id: payload.matchId, userId: client.userId },
+        { id: payload.matchId, matchedUserId: client.userId },
+      ],
+    });
+
+    if (!match) {
+      this.logger.error(`❌ Match ${payload.matchId} not found or user ${client.userId} not authorized`);
+      throw new UnauthorizedException('Match not found or unauthorized');
+    }
+
+    // Déterminer automatiquement le receiverId (l'autre utilisateur du match)
+    const receiverId = match.userId === client.userId
+      ? match.matchedUserId
+      : match.userId;
+
+    this.logger.log(`📤 Message: ${client.userId} → ${receiverId} (match: ${payload.matchId})`);
+
+    // Envoyer le message avec le receiverId déterminé côté serveur
     const message = await this.chatService.sendMessage(
       payload.matchId,
       client.userId, // userId authentifié depuis le JWT
-      payload.receiverId,
+      receiverId, // Déterminé automatiquement côté serveur
       payload.content,
     );
 
@@ -113,7 +137,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Emit to receiver's user room to ensure delivery even if not in match room
     // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
-    this.server.to(`user-${payload.receiverId}`).emit('message', message);
+    this.server.to(`user-${receiverId}`).emit('message', message);
 
     return message;
   }

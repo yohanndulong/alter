@@ -32,9 +32,10 @@ export const chatService = {
     }
   },
 
-  sendMessageWS(matchId: string, receiverId: string, content: string) {
+  sendMessageWS(matchId: string, content: string) {
     if (chatSocket) {
-      chatSocket.emit('send-message', { matchId, receiverId, content })
+      // Le receiverId est déterminé automatiquement côté serveur pour la sécurité
+      chatSocket.emit('send-message', { matchId, content })
     }
   },
 
