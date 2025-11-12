@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsEnum, IsArray, IsOptional, Min, Max } from 'class-validator';
-import { Gender } from '../entities/user.entity';
+import { Gender, SexualOrientation } from '../entities/user.entity';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -33,8 +33,8 @@ export class UpdateProfileDto {
   locationLongitude?: number;
 
   @IsOptional()
-  @IsString()
-  sexualOrientation?: string;
+  @IsEnum(SexualOrientation)
+  sexualOrientation?: SexualOrientation;
 
   @IsOptional()
   @IsArray()
