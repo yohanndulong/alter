@@ -73,11 +73,18 @@ alter/
 │   │   │   ├── upload/         # Upload de photos
 │   │   │   ├── llm/            # Intégration OpenRouter
 │   │   │   ├── embeddings/     # Embeddings pour matching
+│   │   │   ├── notifications/  # Push notifications (APNs + FCM)
 │   │   │   ├── parameters/     # Paramètres versionnés
 │   │   │   └── admin/          # Administration
 │   │   ├── config/             # Configuration TypeORM, etc.
 │   │   └── scripts/            # Scripts d'initialisation
 │   └── package.json
+│
+├── web/                         # Site vitrine alterdating.com
+│   ├── css/                     # Styles du site vitrine
+│   │   └── style.css           # Design system matching l'app
+│   ├── images/                  # Assets du site
+│   └── *.html                   # Pages (index, CGU, CGV, etc.)
 │
 ├── docker-compose.yml           # PostgreSQL + pgAdmin
 └── claude.md                    # Ce fichier
@@ -117,6 +124,12 @@ alter/
 - Détection automatique de contenu NSFW dans les images
 - Analyse de la qualité des conversations
 - Protection contre le spam et les comportements inappropriés
+
+### 7. Notifications push
+- **Système dual** : APNs natif pour iOS, Firebase Cloud Messaging pour Android
+- **Auto-détection** : Le backend détecte le format du token pour router vers le bon service
+- **Couverture complète** : Notifications pour messages texte, vocaux et photos
+- **Orientation** : Application verrouillée en mode portrait uniquement
 
 ## Développement
 
@@ -370,6 +383,19 @@ EMAIL_FROM_ADDRESS=noreply@alter.app
 OPENROUTER_API_KEY=sk-or-v1-xxxxx
 OPENAI_API_KEY=sk-xxxxx          # Pour embeddings uniquement
 
+# Push Notifications
+## iOS (APNs)
+APNS_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+APNS_KEY_ID=ABC123XYZ
+APNS_TEAM_ID=XXXXXXXXXX
+APNS_BUNDLE_ID=com.alterdating.alter
+APNS_PRODUCTION=false           # true pour production
+
+## Android (Firebase)
+FIREBASE_PROJECT_ID=alter-xxxxx
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@alter-xxxxx.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
+
 # WebSocket
 WEBSOCKET_CORS_ORIGIN=capacitor://localhost,https://staging.alterdating.com
 ```
@@ -609,6 +635,60 @@ npm run migration:run     # Réappliquer
 - `src/components/CityAutocomplete.tsx` - Constante DEFAULT_COUNTRY_CODES
 - `src/contexts/NetworkContext.tsx` - Effacement auto erreurs offline
 - `src/types/index.ts` - Type city_location déjà présent
+
+#### Notifications push et sécurité
+
+**1. Migration de Firebase vers APNs pour iOS**
+- **Problème** : Crash iOS au lancement causé par `FirebaseApp.configure()` avec tokens APNs
+- **Solution** : Suppression complète de Firebase sur iOS, utilisation native d'APNs
+- **Fichiers modifiés** :
+  - `api/src/modules/notifications/notifications.service.ts` - Système dual APNs (iOS) + FCM (Android)
+  - `ios/App/App/AppDelegate.swift` - Suppression Firebase, gardé uniquement UNUserNotificationCenter
+  - `ios/App/Podfile` - Suppression de tous les pods Firebase
+  - `app/src/services/notifications.ts` - Ajout détection platform avec `Capacitor.getPlatform()`
+- **Configuration requise** : Variables d'environnement APNs (APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID, etc.)
+- **Auto-détection** : Le backend détecte automatiquement le format du token (hex 64 chars = APNs)
+
+**2. Fix critique de sécurité : Injection de receiverId dans les messages**
+- **Vulnérabilité** : Le receiverId était envoyé par le frontend, permettant l'injection de messages
+- **Solution** : Calcul serveur du receiverId basé sur le match et le JWT
+- **Fichiers modifiés** :
+  - `api/src/modules/chat/chat.gateway.ts` - Suppression receiverId du payload WebSocket, calcul automatique
+  - `app/src/services/chat.ts` - Suppression paramètre receiverId de `sendMessageWS()`
+  - `app/src/pages/Chat.tsx` - Fix calcul receiverId pour messages optimistes
+- **Principe** : À partir du matchId et du userId (JWT), on détermine l'autre utilisateur (userId ou matchedUserId)
+
+**3. Notifications pour messages photos et vocaux**
+- **Problème** : Seuls les messages texte généraient des notifications push
+- **Solution** : Ajout notifications dans `chat.controller.ts` pour endpoints voice et photo
+- **Messages** : "🎤 Message vocal" et "📸 Photo"
+- **Fichiers modifiés** :
+  - `api/src/modules/chat/chat.controller.ts:222-237` - Notification message vocal
+  - `api/src/modules/chat/chat.controller.ts:319-334` - Notification photo
+
+**4. Verrouillage en mode portrait**
+- **Android** : `android/app/src/main/AndroidManifest.xml` - `android:screenOrientation="portrait"`
+- **iOS** : `ios/App/App/Info.plist` - Suppression orientations paysage, gardé uniquement portrait
+
+**5. Fix freeze de l'introduction sur iOS**
+- **Problème** : L'animation NetworkAnimation avec Canvas causait des freezes (780 calculs/frame)
+- **Solution** : Désactivation sur plateformes natives avec `!Capacitor.isNativePlatform()`
+- **Fichier** : `app/src/pages/Introduction.tsx`
+
+#### Site vitrine alterdating.com
+
+**1. Création du site vitrine responsive**
+- **Objectif** : Site pour compléter les URLs requises par App Store et Play Store (CGU, CGV, confidentialité)
+- **Structure** :
+  - `web/css/style.css` - Design system reprenant les couleurs et styles de l'app
+  - `web/images/` - Assets du site
+  - `web/*.html` - Pages (accueil, CGU, CGV, confidentialité, etc.)
+- **Design** :
+  - Variables CSS identiques à l'app (--color-primary: #ef4444, --color-secondary: #d946ef)
+  - Typographie : Sora (titres) + Inter (texte)
+  - Responsive mobile-first avec breakpoints
+  - Dégradés de couleurs matching l'app
+  - Composants réutilisables (boutons, cards, formulaires)
 
 ## Support et contact
 

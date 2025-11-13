@@ -12,12 +12,14 @@ import {
   Res,
   Query,
   StreamableFile,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { ChatService } from './chat.service';
 import { MediaService } from './media.service';
 import { ChatGateway } from './chat.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -31,10 +33,13 @@ import { Message, MessageType } from './entities/message.entity';
 @Controller('chat/matches')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
+  private readonly logger = new Logger(ChatController.name);
+
   constructor(
     private readonly chatService: ChatService,
     private readonly mediaService: MediaService,
     private readonly chatGateway: ChatGateway,
+    private readonly notificationsService: NotificationsService,
     @InjectRepository(Match)
     private readonly matchRepository: Repository<Match>,
     @InjectRepository(Message)
@@ -214,6 +219,23 @@ export class ChatController {
     // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
     this.chatGateway.server.to(`user-${receiverId}`).emit('message', response);
 
+    // Envoyer une notification push au destinataire
+    try {
+      this.logger.log(`📤 Envoi notification message vocal: ${user.name} (${user.id}) → ${receiverId}`);
+
+      await this.notificationsService.sendNewMessageNotification(
+        receiverId,
+        user.name,
+        '🎤 Message vocal',
+        matchId,
+      );
+
+      this.logger.log(`✅ Notification message vocal envoyée avec succès`);
+    } catch (error) {
+      this.logger.error(`❌ Erreur lors de l'envoi de la notification push: ${error.message}`);
+      // Ne pas échouer l'envoi du message si la notification échoue
+    }
+
     return response;
   }
 
@@ -293,6 +315,23 @@ export class ChatController {
     // Emit to receiver's user room to ensure delivery even if not in match room
     // DON'T emit to sender's user room to avoid duplicates (sender is in match room)
     this.chatGateway.server.to(`user-${receiverId}`).emit('message', response);
+
+    // Envoyer une notification push au destinataire
+    try {
+      this.logger.log(`📤 Envoi notification photo: ${user.name} (${user.id}) → ${receiverId}`);
+
+      await this.notificationsService.sendNewMessageNotification(
+        receiverId,
+        user.name,
+        '📸 Photo',
+        matchId,
+      );
+
+      this.logger.log(`✅ Notification photo envoyée avec succès`);
+    } catch (error) {
+      this.logger.error(`❌ Erreur lors de l'envoi de la notification push: ${error.message}`);
+      // Ne pas échouer l'envoi du message si la notification échoue
+    }
 
     return response;
   }
