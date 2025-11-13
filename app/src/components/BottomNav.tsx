@@ -14,7 +14,7 @@ export const BottomNav: React.FC = () => {
   const navItems = [
     {
       path: '/alter-chat',
-      icon: <Logo variant="icon" size={24} />,
+      icon: <Logo variant="icon" size={30} />,
       label: t('nav.alter'),
     },
     {

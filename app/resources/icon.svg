@@ -13,19 +13,19 @@
 
   <!-- Logo centré et agrandi -->
   <g transform="translate(512, 512) scale(5) translate(-72.5, -62.5)">
-    <!-- Têtes (cercles en haut) -->
-    <circle cx="60" cy="20" r="8" fill="white"/>
-    <circle cx="85" cy="20" r="8" fill="white"/>
+    <!-- Têtes (cercles en haut) - Très écartées et plus grandes -->
+    <circle cx="50" cy="20" r="15" fill="white"/>
+    <circle cx="95" cy="20" r="15" fill="white"/>
 
-    <!-- Petit cœur visible entre les deux têtes (remonté et centré) -->
-    <path d="M 72.5 8 C 74.5 8 76 9.5 76 11.5 C 76 14 73 16 69 17.5 C 65 16 62 14 62 11.5 C 62 9.5 63.5 8 65.5 8 C 67.5 8 69 9.5 69 11.5 C 69 9.5 70.5 8 72.5 8 Z" fill="white" transform="translate(3.5, 0)"/>
+    <!-- Cœur entre les deux têtes - Centré, espacé, remonté et agrandi -->
+    <path d="M 72.5 2 C 76.5 2 80 5 80 8.5 C 80 13 75 17 69 20 C 63 17 58 13 58 8.5 C 58 5 61.5 2 65.5 2 C 69.5 2 69 5 69 8.5 C 69 5 71.5 2 72.5 2 Z" fill="white" transform="translate(3.5, -4)"/>
 
-    <!-- Jambes avec épaisseur uniforme (sans pieds) -->
-    <path d="M 60 35 Q 50 75 46 115" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
-    <path d="M 85 35 Q 95 75 99 115" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <!-- Jambes - S'écartent puis verticales - Très écartées et épaisses -->
+    <path d="M 50 35 Q 35 65 35 115" stroke="white" stroke-width="18" fill="none" stroke-linecap="round"/>
+    <path d="M 95 35 Q 110 65 110 115" stroke="white" stroke-width="18" fill="none" stroke-linecap="round"/>
 
-    <!-- Bras formant un câlin (deux traits courbés distincts remontés) -->
-    <path d="M 54 70 Q 72.5 65 91 70" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <path d="M 54 77 Q 72.5 82 91 77" stroke="white" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- Bras formant un câlin - Très écartés et épais -->
+    <path d="M 35 60 Q 72.5 55 110 60" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M 35 67 Q 72.5 72 110 67" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
   </g>
 </svg>

@@ -404,7 +404,7 @@ export const AlterChat: React.FC = () => {
           <div className="alter-chat-header-top">
             <div className="alter-chat-header-info">
               <div className="alter-chat-avatar">
-                <Logo variant="icon" size={28} />
+                <Logo variant="icon" size={42} />
               </div>
               <div>
                 <h2 className="alter-chat-title">{t('chat.alterAgent')}</h2>
@@ -545,7 +545,7 @@ export const AlterChat: React.FC = () => {
               >
                 {message.role === 'assistant' && (
                   <div className="alter-chat-message-avatar">
-                    <Logo variant="icon" size={20} />
+                    <Logo variant="icon" size={32} />
                   </div>
                 )}
                 <div className="alter-chat-message-content">
