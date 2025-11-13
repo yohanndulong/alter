@@ -373,6 +373,15 @@ nav a.active {
 .feature-icon {
   font-size: 3rem;
   margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-icon img {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
 }
 
 .feature-card h3 {
