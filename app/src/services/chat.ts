@@ -320,7 +320,7 @@ export const chatService = {
     }>
     common_ground: string
   }> {
-    const params = forceRefresh ? { refresh: 'true' } : {}
-    return api.get(`/chat/matches/${matchId}/suggestions`, { params })
+    const params = forceRefresh ? { refresh: 'true' } : undefined
+    return api.get(`/chat/matches/${matchId}/suggestions`, params ? { params } : undefined)
   },
 }

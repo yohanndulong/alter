@@ -20,7 +20,6 @@ export const ConversationStarters: React.FC<ConversationStartersProps> = ({
   suggestions,
   commonGround,
   isLoading = false,
-  onSuggestionClick,
   onRefresh,
 }) => {
   const { t } = useTranslation()
