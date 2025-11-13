@@ -1,0 +1,23 @@
+{
+  "name": "alter-website",
+  "version": "1.0.0",
+  "description": "Alter Dating - Site vitrine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "alter",
+    "dating",
+    "website"
+  ],
+  "author": "Alter Dating",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

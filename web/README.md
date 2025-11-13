@@ -29,17 +29,67 @@ Le site reprend le design system de l'application mobile :
 
 ## 🚀 Déploiement
 
-### Option 1 : Hébergement statique (recommandé)
+### Option 1 : Railway (Recommandé pour ce projet)
 
-Le site est entièrement statique (HTML/CSS/JS), il peut être hébergé sur n'importe quel service :
+Le dossier `/web` contient un serveur Express minimal pour servir les fichiers statiques.
+
+#### Déploiement sur Railway :
+
+1. **Depuis le dashboard Railway** :
+   - Cliquez sur "New Project"
+   - Sélectionnez "Deploy from GitHub repo"
+   - Choisissez votre repository `alter`
+   - Railway détectera automatiquement le projet
+
+2. **Configuration du service** :
+   - Dans les settings du service, configurez :
+   - **Root Directory** : `web`
+   - **Build Command** : `npm install` (auto-détecté)
+   - **Start Command** : `npm start` (auto-détecté)
+
+3. **Variables d'environnement** (optionnel) :
+   ```
+   PORT=3001
+   ```
+   (Railway configure automatiquement PORT)
+
+4. **Domaine personnalisé** :
+   - Dans l'onglet "Settings" > "Domains"
+   - Cliquez sur "Custom Domain"
+   - Ajoutez `alterdating.com` et `www.alterdating.com`
+   - Configurez vos DNS selon les instructions Railway
+
+5. **Déploiement** :
+   - Railway déploie automatiquement à chaque push sur la branche principale
+   - Vous pouvez aussi déclencher un déploiement manuel depuis le dashboard
+
+#### Architecture Railway recommandée :
+
+```
+Projet "Alter" sur Railway
+├── Service 1: "alter-api" (dossier /api)
+│   ├── URL: api.alterdating.com
+│   └── Port: 3000
+│
+├── Service 2: "alter-website" (dossier /web)
+│   ├── URL: alterdating.com
+│   └── Port: 3001
+│
+└── Service 3: "postgres" (base de données)
+    └── URL: interne Railway
+```
+
+### Option 2 : Hébergement statique alternatif
+
+Si vous préférez un hébergement purement statique (sans Node.js) :
 
 - **Netlify** : Drag & drop du dossier `/web` (gratuit)
 - **Vercel** : Connexion GitHub et déploiement automatique (gratuit)
-- **GitHub Pages** : Hébergement gratuit via repository
 - **Cloudflare Pages** : CDN rapide et gratuit
-- **Firebase Hosting** : Intégration facile avec Firebase
 
-### Option 2 : Serveur web classique
+Pour ces options, supprimez `server.js` et `package.json`, puis uploadez uniquement les fichiers HTML/CSS/JS.
+
+### Option 3 : Serveur web classique
 
 Copiez simplement tous les fichiers du dossier `/web` dans le répertoire racine de votre serveur web (Apache, Nginx, etc.).
 
@@ -114,18 +164,24 @@ Pour ajouter une version anglaise :
 3. Ajouter un sélecteur de langue dans le header
 4. Configurer `lang="en"` dans les balises `<html>`
 
-## 📱 Test responsive
+## 📱 Test en local
 
-Testez le site sur différents appareils :
+Testez le site sur votre machine avant de déployer :
 
 ```bash
-# Serveur local pour tester
-npx http-server web -p 8080
+# Depuis le dossier /web
+cd web
 
-# Puis ouvrir http://localhost:8080
+# Installer les dépendances
+npm install
+
+# Lancer le serveur local
+npm start
+
+# Le site sera accessible sur http://localhost:3001
 ```
 
-Ou utilisez les outils de développement de votre navigateur (F12 > Mode responsive).
+Ou utilisez les outils de développement de votre navigateur (F12 > Mode responsive) pour tester le responsive.
 
 ## ✅ Checklist avant déploiement
 

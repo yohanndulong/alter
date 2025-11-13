@@ -682,13 +682,20 @@ npm run migration:run     # Réappliquer
 - **Structure** :
   - `web/css/style.css` - Design system reprenant les couleurs et styles de l'app
   - `web/images/` - Assets du site
-  - `web/*.html` - Pages (accueil, CGU, CGV, confidentialité, etc.)
+  - `web/*.html` - Pages (accueil, CGU, CGV, confidentialité, contact)
+  - `web/server.js` - Serveur Express minimal pour déploiement Railway
+  - `web/package.json` - Configuration Node.js pour Railway
+  - `web/railway.toml` - Configuration Railway
 - **Design** :
   - Variables CSS identiques à l'app (--color-primary: #ef4444, --color-secondary: #d946ef)
   - Typographie : Sora (titres) + Inter (texte)
   - Responsive mobile-first avec breakpoints
   - Dégradés de couleurs matching l'app
   - Composants réutilisables (boutons, cards, formulaires)
+- **Déploiement** :
+  - Service séparé sur Railway avec Root Directory: `web`
+  - Domaine personnalisé: `alterdating.com`
+  - Voir `web/RAILWAY_DEPLOY.md` pour le guide complet
 
 ## Support et contact
 
