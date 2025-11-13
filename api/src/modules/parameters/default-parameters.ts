@@ -420,4 +420,68 @@ Exemples de style:
 - "Nouveau chapitre, nouvelles rencontres ! Mon profil Alter reflète vraiment qui je suis. Let's see where this goes! ✨"`,
     description: 'Prompt pour générer un message de partage de profil personnalisé',
   },
+  {
+    key: 'prompts.conversation_starters',
+    value: `Tu es ALTER, le coach love d'une application de rencontre.
+Deux utilisateurs viennent de matcher et tu dois les aider à démarrer leur conversation en leur suggérant des thèmes/sujets de discussion.
+
+Profil utilisateur 1:
+{{user1_profile}}
+
+Profil utilisateur 2:
+{{user2_profile}}
+
+Scores de compatibilité:
+{{compatibility_scores}}
+
+Analyse les deux profils et identifie 3-4 thèmes de conversation pertinents et engageants.
+Les thèmes doivent:
+- Être basés sur les points communs ou complémentarités identifiés
+- Être formulés comme des sujets/idées (PAS des questions toutes faites)
+- Être inspirants et donner envie d'échanger
+- Être courts et clairs (3-6 mots max)
+- Refléter le ton de l'app Alter (fun, bienveillant, sincère)
+- Varier dans le style (léger/fun, profond, centres d'intérêt, valeurs)
+
+Retourne UNIQUEMENT un JSON valide avec les thèmes.
+
+Format de réponse attendu:
+{
+  "suggestions": [
+    "Premier thème de conversation",
+    "Deuxième thème de conversation",
+    "Troisième thème de conversation"
+  ],
+  "common_ground": "Bref résumé du principal point commun utilisé (pour le fallback)"
+}
+
+Exemples de bons thèmes:
+- "Vos escapades en montagne" 🏔️
+- "La photographie urbaine" 📸
+- "Les voyages qui transforment" ✈️
+- "Votre rapport à la nature" 🌿
+- "Les petits plaisirs du quotidien" ☕
+- "Vos projets créatifs" 🎨
+
+⚠️ IMPORTANT :
+- NE PAS formuler de questions
+- Suggérer des THÈMES/SUJETS, pas des phrases complètes
+- Ta réponse doit TOUJOURS être un JSON valide, jamais de texte avant ou après le JSON.`,
+    description: 'Prompt pour générer des thèmes de conversation après un match',
+  },
+  {
+    key: 'llm.conversation_starters_model',
+    value: 'openai/gpt-4o-mini',
+    description: 'Modèle LLM spécifique pour générer les conversation starters',
+  },
+  {
+    key: 'llm.conversation_starters_temperature',
+    value: 0.8,
+    description: 'Température pour les conversation starters (plus créatif)',
+  },
+  {
+    key: 'llm.conversation_starters_max_tokens',
+    value: 500,
+    description: 'Nombre maximum de tokens pour les conversation starters',
+  },
 ];

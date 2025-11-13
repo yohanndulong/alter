@@ -64,3 +64,6 @@ export type { CityLocationInputProps } from './CityLocationInput'
 
 export { ShareButton } from './ShareButton'
 export type { ShareButtonProps } from './ShareButton'
+
+export { ConversationStarters } from './ConversationStarters'
+export type { ConversationStartersProps, Suggestion } from './ConversationStarters'

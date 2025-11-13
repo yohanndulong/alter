@@ -244,7 +244,14 @@
     "alchemyTitle": "Votre Alchimie",
     "alchemyButton": "Découvrez votre alchimie",
     "alchemyAnalyzing": "Analyse en cours...",
-    "alchemyAdvice": "Conseil ALTER"
+    "alchemyAdvice": "Conseil ALTER",
+    "conversationStarters": {
+      "title": "Idées de conversation",
+      "loading": "Analyse de vos profils en cours...",
+      "basedOn": "Basé sur ",
+      "hint": "Laissez-vous inspirer par ces sujets",
+      "refresh": "Autres idées"
+    }
   },
   "profile": {
     "title": "Profil",

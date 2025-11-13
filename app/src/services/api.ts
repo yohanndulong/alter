@@ -95,8 +95,13 @@ class ApiService {
     }
   }
 
-  async get<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'GET' })
+  async get<T>(endpoint: string, options?: { params?: Record<string, string> }): Promise<T> {
+    let url = endpoint
+    if (options?.params) {
+      const queryString = new URLSearchParams(options.params).toString()
+      url = `${endpoint}?${queryString}`
+    }
+    return this.request<T>(url, { method: 'GET' })
   }
 
   async post<T>(endpoint: string, data?: unknown): Promise<T> {

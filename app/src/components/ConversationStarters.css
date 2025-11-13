@@ -1,0 +1,191 @@
+.conversation-starters {
+  margin: var(--spacing-4) var(--spacing-3);
+  padding: var(--spacing-4);
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+  border-radius: 24px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.conversation-starters::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.conversation-starters__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-4);
+  position: relative;
+  z-index: 1;
+}
+
+.conversation-starters__header > div {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.conversation-starters__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.conversation-starters__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.conversation-starters__refresh {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conversation-starters__refresh:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(180deg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.conversation-starters__refresh:active {
+  transform: rotate(360deg) scale(0.95);
+}
+
+.conversation-starters__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-6) 0;
+  color: white;
+}
+
+.conversation-starters__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: conversation-starters-spin 0.8s linear infinite;
+}
+
+@keyframes conversation-starters-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.conversation-starters__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  position: relative;
+  z-index: 1;
+}
+
+.conversation-starter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  min-height: 30px;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(20px);
+  border-radius: 18px;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: conversation-starter-fadeIn 0.4s ease-out backwards;
+}
+
+.conversation-starter:nth-child(1) { animation-delay: 0.1s; }
+.conversation-starter:nth-child(2) { animation-delay: 0.2s; }
+.conversation-starter:nth-child(3) { animation-delay: 0.3s; }
+.conversation-starter:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes conversation-starter-fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+.conversation-starter__icon {
+  font-size: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.conversation-starter__message {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.4;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.conversation-starters__hint {
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.9);
+  text-align: center;
+  margin: var(--spacing-3) 0 0 0;
+  font-style: italic;
+  position: relative;
+  z-index: 1;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .conversation-starters {
+    margin: var(--spacing-3) var(--spacing-2);
+    padding: var(--spacing-3);
+    border-radius: 20px;
+  }
+
+  .conversation-starter {
+    padding: var(--spacing-2-5) var(--spacing-3);
+  }
+
+  .conversation-starters__title {
+    font-size: var(--font-size-base);
+  }
+
+  .conversation-starter__icon {
+    font-size: 24px;
+  }
+
+  .conversation-starter__message {
+    font-size: var(--font-size-xs);
+  }
+}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
-import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage, VoiceRecorder, CameraCapture, LoadingMoreIndicator, Logo } from '@/components'
+import { Button, Modal, ProfileModal, ConfirmDialog, VoiceMessage, PhotoMessage, VoiceRecorder, CameraCapture, LoadingMoreIndicator, Logo, ConversationStarters } from '@/components'
 import { chatService } from '@/services/chat'
 import { matchingService } from '@/services/matching'
 import { Message, Match, PhotoViewMode } from '@/types'
@@ -41,6 +41,9 @@ export const Chat: React.FC = () => {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [conversationStarters, setConversationStarters] = useState<any[]>([])
+  const [commonGround, setCommonGround] = useState<string>('')
+  const [isLoadingStarters, setIsLoadingStarters] = useState(false)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -54,10 +57,13 @@ export const Chat: React.FC = () => {
   // Gérer le bouton retour - retourner à la liste des matches
   useBackButtonNavigation('/matches')
 
+
+
   useEffect(() => {
     if (!matchId || !user?.id) return
 
     loadMatch()
+
 
     // Rejoindre la room du match spécifique
     chatService.joinMatch(matchId)
@@ -126,6 +132,8 @@ export const Chat: React.FC = () => {
 
   // Réinitialiser le flag quand on change de conversation
   useEffect(() => {
+        loadConversationStarters()
+
     hasScrolledToUnread.current = false
   }, [matchId])
 
@@ -180,6 +188,34 @@ export const Chat: React.FC = () => {
       showError(t('common.error'))
     }
   }
+
+  // Charger les suggestions de conversation
+  const loadConversationStarters = async (forceRefresh = false) => {
+    console.log("Loading conversation starters for matchId:", matchId, "forceRefresh:", forceRefresh)
+    if (!matchId) return
+
+    setIsLoadingStarters(true)
+    try {
+      const result = await chatService.getConversationStarters(matchId, forceRefresh)
+      setConversationStarters(result.suggestions || [])
+      setCommonGround(result.common_ground || '')
+    } catch (err) {
+      console.error('Failed to load conversation starters:', err)
+      // En cas d'erreur, ne pas afficher d'erreur à l'utilisateur
+      // Les suggestions ne sont qu'un bonus
+    } finally {
+      setIsLoadingStarters(false)
+    }
+  }
+
+  // Charger les suggestions au chargement si pas de messages
+  useEffect(() => {
+      loadConversationStarters()
+
+    if (messages.length === 0 && matchId && !isLoading) {
+      loadConversationStarters()
+    }
+  }, [messages.length, matchId, isLoading])
 
   // Track si on a déjà marqué comme lu pour éviter les appels répétés
   const hasMarkedAsRead = useRef(false)
@@ -622,6 +658,19 @@ export const Chat: React.FC = () => {
           {isLoadingMore && (
             <LoadingMoreIndicator text={t('chat.loadingMore')} />
           )}
+
+          {/* TODO: Afficher seulement si messages.length === 0 en production */}
+          {(conversationStarters.length > 0 || isLoadingStarters) && (
+            <div style={{ padding: 'var(--spacing-4)' }}>
+              <ConversationStarters
+                suggestions={conversationStarters}
+                commonGround={commonGround}
+                isLoading={isLoadingStarters}
+                onRefresh={() => loadConversationStarters(true)}
+              />
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="chat-empty">
               <p className="chat-empty-text">{t('chat.noMessages')}</p>

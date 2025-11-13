@@ -5,6 +5,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Message } from './entities/message.entity';
 import { MessageMedia } from './entities/message-media.entity';
+import { ConversationStartersCache } from './entities/conversation-starters-cache.entity';
 import { Match } from '../matching/entities/match.entity';
 import { User } from '../users/entities/user.entity';
 import { ChatService } from './chat.service';
@@ -18,7 +19,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Message, MessageMedia, Match, User]),
+    TypeOrmModule.forFeature([Message, MessageMedia, ConversationStartersCache, Match, User]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -24,6 +24,7 @@ import { Pass } from './modules/matching/entities/pass.entity';
 import { CompatibilityCache } from './modules/matching/entities/compatibility-cache.entity';
 import { Message } from './modules/chat/entities/message.entity';
 import { MessageMedia } from './modules/chat/entities/message-media.entity';
+import { ConversationStartersCache } from './modules/chat/entities/conversation-starters-cache.entity';
 import { AlterMessage } from './modules/alter-chat/entities/alter-message.entity';
 import { OnboardingQuestion } from './modules/onboarding/entities/onboarding-question.entity';
 import { Parameter } from './modules/parameters/entities/parameter.entity';
@@ -49,7 +50,7 @@ import { FcmToken } from './modules/notifications/entities/fcm-token.entity';
           return {
             type: 'postgres',
             url: databaseUrl,
-            entities: [User, Photo, Match, Like, Pass, CompatibilityCache, Message, MessageMedia, AlterMessage, OnboardingQuestion, Parameter, FcmToken],
+            entities: [User, Photo, Match, Like, Pass, CompatibilityCache, Message, MessageMedia, ConversationStartersCache, AlterMessage, OnboardingQuestion, Parameter, FcmToken],
             synchronize: configService.get('NODE_ENV') === 'development',
             logging: false, // Logs SQL désactivés
             timezone: 'UTC', // Stocker toutes les dates en UTC
@@ -67,7 +68,7 @@ import { FcmToken } from './modules/notifications/entities/fcm-token.entity';
           username: configService.get('DB_USERNAME'),
           password: configService.get('DB_PASSWORD'),
           database: configService.get('DB_DATABASE'),
-          entities: [User, Photo, Match, Like, Pass, Message, MessageMedia, AlterMessage, OnboardingQuestion, Parameter, FcmToken],
+          entities: [User, Photo, Match, Like, Pass, Message, MessageMedia, ConversationStartersCache, AlterMessage, OnboardingQuestion, Parameter, FcmToken],
           synchronize: configService.get('NODE_ENV') === 'development',
           logging: false, // Logs SQL désactivés
           timezone: 'UTC', // Stocker toutes les dates en UTC

@@ -540,4 +540,85 @@ Sois chaleureux, encourageant et professionnel. Garde tes réponses concises (2-
       };
     }
   }
+
+  /**
+   * Génère des suggestions de messages d'accroche pour démarrer une conversation après un match
+   */
+  async generateConversationStarters(
+    user1Profile: string,
+    user2Profile: string,
+    compatibilityScores: { global: number; love: number; friendship: number; carnal: number },
+  ): Promise<{ suggestions: string[]; common_ground: string }> {
+    // Récupérer le prompt depuis les paramètres
+    const promptTemplate = await this.parametersService.get<string>('prompts.conversation_starters');
+
+    // Formater les scores de compatibilité
+    const scoresText = `
+- Compatibilité globale : ${compatibilityScores.global}/100
+- Potentiel amoureux : ${compatibilityScores.love}/100
+- Potentiel amical : ${compatibilityScores.friendship}/100
+- Alchimie physique : ${compatibilityScores.carnal}/100
+`;
+
+    // Remplacer les placeholders
+    const systemPrompt = replacePlaceholders(promptTemplate, {
+      user1_profile: user1Profile,
+      user2_profile: user2Profile,
+      compatibility_scores: scoresText.trim(),
+    });
+
+    const messages: LlmMessage[] = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+    ];
+
+    // Récupérer les paramètres spécifiques aux conversation starters
+    const model = await this.parametersService.get<string>('llm.conversation_starters_model');
+    const temperature = await this.parametersService.get<number>('llm.conversation_starters_temperature');
+    const maxTokens = await this.parametersService.get<number>('llm.conversation_starters_max_tokens');
+
+    this.logger.log(`🎯 Generating conversation starters with model=${model}, temp=${temperature}`);
+
+    const response = await this.chat(messages, {
+      model,
+      temperature,
+      maxTokens,
+      jsonMode: true,
+    });
+
+    try {
+      const parsed = cleanAndParseJSON<{ suggestions: string[]; common_ground: string }>(
+        response.content,
+        this.logger,
+        'conversation starters',
+      );
+
+      // Validation
+      if (!parsed.suggestions || !Array.isArray(parsed.suggestions) || parsed.suggestions.length === 0) {
+        throw new Error('Invalid suggestions format from LLM');
+      }
+
+      return {
+        suggestions: parsed.suggestions.slice(0, 3), // Limiter à 3 suggestions
+        common_ground: parsed.common_ground || '',
+      };
+    } catch (error) {
+      this.logger.error('Failed to parse conversation starters response:', {
+        error: error.message,
+        content: response.content,
+      });
+
+      // Fallback: retourner des thèmes génériques
+      return {
+        suggestions: [
+          "Vos destinations de rêve ✈️",
+          "Les petits bonheurs du quotidien ☕",
+          "Vos passions créatives 🎨",
+        ],
+        common_ground: 'Thèmes universels',
+      };
+    }
+  }
 }

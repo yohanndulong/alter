@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Message, MessageType } from './entities/message.entity';
 import { Match } from '../matching/entities/match.entity';
 import { User } from '../users/entities/user.entity';
+import { ConversationStartersCache } from './entities/conversation-starters-cache.entity';
 import { LlmService } from '../llm/llm.service';
 import { ParametersService } from '../parameters/parameters.service';
 import { MediaService } from './media.service';
@@ -22,6 +23,8 @@ export class ChatService {
     private readonly matchRepository: Repository<Match>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(ConversationStartersCache)
+    private readonly conversationStartersCacheRepository: Repository<ConversationStartersCache>,
     private readonly llmService: LlmService,
     private readonly parametersService: ParametersService,
     private readonly mediaService: MediaService,
@@ -356,11 +359,35 @@ export class ChatService {
   }
 
   /**
-   * Génère des suggestions de sujets de conversation basées sur les intérêts communs
+   * Génère des suggestions de sujets de conversation basées sur les profils et la compatibilité
+   * Implémente un système de fallback: IA → Points communs → Prédéfini
    */
-  async generateConversationSuggestions(matchId: string, userId: string): Promise<any> {
+  async generateConversationSuggestions(matchId: string, userId: string, forceRefresh = false): Promise<any> {
     try {
-      // Récupérer le match
+      this.logger.log(`🎯 Generating conversation starters for match ${matchId} (forceRefresh=${forceRefresh})`);
+
+      // Si forceRefresh, supprimer le cache existant
+      if (forceRefresh) {
+        await this.conversationStartersCacheRepository.delete({ matchId });
+        this.logger.log(`🗑️ Deleted cached conversation starters for match ${matchId}`);
+      }
+
+      // Vérifier d'abord si on a déjà un cache (sauf si forceRefresh)
+      if (!forceRefresh) {
+        const cachedStarters = await this.conversationStartersCacheRepository.findOne({
+          where: { matchId },
+        });
+
+        if (cachedStarters) {
+          this.logger.log(`💾 Using cached conversation starters for match ${matchId}`);
+          return {
+            suggestions: cachedStarters.suggestions,
+            common_ground: cachedStarters.commonGround,
+          };
+        }
+      }
+
+      // Récupérer le match avec les relations nécessaires
       const match = await this.matchRepository.findOne({
         where: { id: matchId },
         relations: ['user', 'matchedUser'],
@@ -374,83 +401,197 @@ export class ChatService {
       const currentUser = match.user.id === userId ? match.user : match.matchedUser;
       const otherUser = match.user.id === userId ? match.matchedUser : match.user;
 
-      // Trouver les intérêts communs
-      const currentUserInterests = currentUser.interests || [];
-      const otherUserInterests = otherUser.interests || [];
-      const commonInterests = currentUserInterests.filter(interest =>
-        otherUserInterests.includes(interest)
-      );
+      // Construire les profils pour le LLM
+      const user1Profile = this.buildUserProfileForLLM(currentUser);
+      const user2Profile = this.buildUserProfileForLLM(otherUser);
 
-      // Récupérer les derniers messages pour comprendre le contexte
-      const recentMessages = await this.messageRepository.find({
-        where: { matchId },
-        order: { createdAt: 'DESC' },
-        take: 10,
-      });
+      // Récupérer les scores de compatibilité
+      const compatibilityScores = {
+        global: match.compatibilityScoreGlobal || 0,
+        love: match.compatibilityScoreLove || 0,
+        friendship: match.compatibilityScoreFriendship || 0,
+        carnal: match.compatibilityScoreCarnal || 0,
+      };
 
-      const hasMessages = recentMessages.length > 0;
-      const lastMessageTime = hasMessages ? recentMessages[0].createdAt : null;
-      const daysSinceLastMessage = lastMessageTime
-        ? Math.floor((Date.now() - new Date(lastMessageTime).getTime()) / (1000 * 60 * 60 * 24))
-        : null;
+      let result: any;
 
-      // Construire le prompt pour l'IA
-      const prompt = `Tu es un expert en communication et relations. Génère 3 suggestions de sujets de conversation pour relancer ou enrichir une discussion.
+      try {
+        // 🚀 Priorité 1: Suggestions IA personnalisées
+        this.logger.log('✨ Attempting AI-powered conversation starters...');
+        const aiResult = await this.llmService.generateConversationStarters(
+          user1Profile,
+          user2Profile,
+          compatibilityScores,
+        );
 
-Contexte:
-- Utilisateur 1 (${currentUser.name}): ${currentUser.alterSummary || 'Profil en construction'}
-- Utilisateur 2 (${otherUser.name}): ${otherUser.alterSummary || 'Profil en construction'}
-- Intérêts communs: ${commonInterests.join(', ') || 'Aucun intérêt commun identifié'}
-${hasMessages ? `- Nombre de messages échangés: ${recentMessages.length}` : '- Aucun message échangé'}
-${daysSinceLastMessage !== null ? `- Jours depuis le dernier message: ${daysSinceLastMessage}` : ''}
+        this.logger.log(`✅ AI generated ${aiResult.suggestions.length} suggestions`);
 
-Instructions:
-1. Si la conversation est stagnante (peu de messages ou ancien), propose des ice-breakers basés sur les intérêts communs
-2. Si la conversation est active, propose d'approfondir des sujets connexes
-3. Sois créatif, empathique et adapté aux personnalités
-4. Chaque suggestion doit être une question ou une phrase d'accroche prête à envoyer
+        result = {
+          suggestions: aiResult.suggestions.map((message, index) => ({
+            id: `ai-${index}`,
+            message,
+            source: 'ai',
+          })),
+          common_ground: aiResult.common_ground,
+        };
+      } catch (aiError) {
+        this.logger.warn(`❌ AI generation failed: ${aiError.message}, falling back to common interests`);
 
-Format de réponse JSON attendu:
-{
-  "suggestions": [
-    {
-      "topic": "Nom du sujet (2-3 mots)",
-      "message": "Message prêt à envoyer",
-      "icon": "emoji représentant le sujet"
-    }
-  ]
-}`;
+        // 🔄 Fallback 1: Suggestions basées sur les points communs
+        const commonInterests = this.findCommonInterests(currentUser, otherUser);
 
-      const response = await this.llmService.chat(
-        [{ role: 'user', content: prompt }],
-        { jsonMode: true, temperature: 0.8, maxTokens: 500 }
-      );
+        if (commonInterests.length > 0) {
+          this.logger.log(`💡 Generating suggestions based on ${commonInterests.length} common interests`);
+          result = this.generateInterestBasedSuggestions(commonInterests, currentUser, otherUser);
+        } else {
+          // 🔄 Fallback 2: Suggestions prédéfinies universelles
+          this.logger.log('📋 Using predefined universal conversation starters');
+          result = this.getPredefinedSuggestions();
+        }
+      }
 
-      const result = JSON.parse(response.content);
+      // Sauvegarder en cache
+      try {
+        await this.conversationStartersCacheRepository.save({
+          matchId,
+          suggestions: result.suggestions,
+          commonGround: result.common_ground,
+        });
+        this.logger.log(`💾 Cached conversation starters for match ${matchId}`);
+      } catch (cacheError) {
+        this.logger.warn(`⚠️ Failed to cache conversation starters: ${cacheError.message}`);
+        // On continue même si le cache échoue
+      }
+
       return result;
     } catch (error) {
-      this.logger.error(`Failed to generate conversation suggestions: ${error.message}`);
+      this.logger.error(`❌ Failed to generate conversation suggestions: ${error.message}`);
 
-      // Suggestions par défaut en cas d'erreur
-      return {
-        suggestions: [
-          {
-            topic: 'Passions',
-            message: 'Qu\'est-ce qui te passionne en ce moment ?',
-            icon: '✨',
-          },
-          {
-            topic: 'Voyage',
-            message: 'Si tu pouvais partir n\'importe où demain, ce serait où ?',
-            icon: '✈️',
-          },
-          {
-            topic: 'Week-end',
-            message: 'Tu as fait quoi de sympa ce week-end ?',
-            icon: '🌟',
-          },
-        ],
-      };
+      // Dernier recours: suggestions prédéfinies
+      return this.getPredefinedSuggestions();
     }
+  }
+
+  /**
+   * Construit un profil utilisateur formaté pour le LLM
+   */
+  private buildUserProfileForLLM(user: User): string {
+    const parts: string[] = [];
+
+    if (user.firstName) {
+      parts.push(`Prénom: ${user.firstName}`);
+    }
+
+    if (user.birthDate) {
+      const age = this.calculateAge(new Date(user.birthDate));
+      parts.push(`Âge: ${age} ans`);
+    }
+
+    if (user.city) {
+      parts.push(`Ville: ${user.city}`);
+    }
+
+    if (user.bio) {
+      parts.push(`Bio: ${user.bio}`);
+    }
+
+    if (user.alterSummary) {
+      parts.push(`Résumé: ${user.alterSummary}`);
+    }
+
+    if (user.interests && user.interests.length > 0) {
+      parts.push(`Intérêts: ${user.interests.join(', ')}`);
+    }
+
+    if (user.searchObjectives && user.searchObjectives.length > 0) {
+      parts.push(`Recherche: ${user.searchObjectives.join(', ')}`);
+    }
+
+    return parts.join('\n');
+  }
+
+  /**
+   * Calcule l'âge à partir de la date de naissance
+   */
+  private calculateAge(birthDate: Date): number {
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  /**
+   * Trouve les intérêts communs entre deux utilisateurs
+   */
+  private findCommonInterests(user1: User, user2: User): string[] {
+    const interests1 = user1.interests || [];
+    const interests2 = user2.interests || [];
+    return interests1.filter(interest => interests2.includes(interest));
+  }
+
+  /**
+   * Génère des suggestions basées sur les intérêts communs
+   */
+  private generateInterestBasedSuggestions(commonInterests: string[], user1: User, user2: User) {
+    const suggestions: string[] = [];
+
+    // Prendre jusqu'à 3 intérêts communs et les transformer en thèmes
+    const selectedInterests = commonInterests.slice(0, 3);
+
+    for (const interest of selectedInterests) {
+      // Transformer l'intérêt en thème de conversation
+      suggestions.push(`Votre passion pour ${interest}`);
+    }
+
+    // Si moins de 3 suggestions, compléter avec des thèmes génériques
+    if (suggestions.length < 3) {
+      const genericThemes = [
+        `Vos coups de cœur du moment`,
+        `Les endroits qui vous inspirent`,
+        `Vos prochaines aventures`,
+      ];
+
+      while (suggestions.length < 3 && genericThemes.length > 0) {
+        suggestions.push(genericThemes.shift()!);
+      }
+    }
+
+    return {
+      suggestions: suggestions.map((message, index) => ({
+        id: `interest-${index}`,
+        message,
+        source: 'common_interests',
+      })),
+      common_ground: commonInterests.join(', '),
+    };
+  }
+
+  /**
+   * Retourne des suggestions prédéfinies universelles
+   */
+  private getPredefinedSuggestions() {
+    return {
+      suggestions: [
+        {
+          id: 'predefined-0',
+          message: "Vos destinations de rêve ✈️",
+          source: 'predefined',
+        },
+        {
+          id: 'predefined-1',
+          message: "Les petits bonheurs du quotidien ☕",
+          source: 'predefined',
+        },
+        {
+          id: 'predefined-2',
+          message: "Vos passions créatives 🎨",
+          source: 'predefined',
+        },
+      ],
+      common_ground: 'Thèmes universels',
+    };
   }
 }

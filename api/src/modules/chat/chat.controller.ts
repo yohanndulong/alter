@@ -368,6 +368,7 @@ export class ChatController {
   async getConversationSuggestions(
     @CurrentUser() user: User,
     @Param('matchId') matchId: string,
+    @Query('refresh') refresh?: string,
   ) {
     // Vérifier que le match existe et appartient à l'utilisateur
     const match = await this.matchRepository.findOne({
@@ -381,7 +382,8 @@ export class ChatController {
       throw new NotFoundException('Match not found');
     }
 
-    return this.chatService.generateConversationSuggestions(matchId, user.id);
+    const forceRefresh = refresh === 'true';
+    return this.chatService.generateConversationSuggestions(matchId, user.id, forceRefresh);
   }
 
   /**

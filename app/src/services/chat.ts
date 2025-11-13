@@ -308,4 +308,19 @@ export const chatService = {
   }> {
     return api.get(`/chat/matches/${matchId}/suggestions`)
   },
+
+  /**
+   * Obtient des suggestions d'accroche personnalisées pour démarrer la conversation
+   */
+  async getConversationStarters(matchId: string, forceRefresh = false): Promise<{
+    suggestions: Array<{
+      id: string
+      message: string
+      source: 'ai' | 'common_interests' | 'predefined'
+    }>
+    common_ground: string
+  }> {
+    const params = forceRefresh ? { refresh: 'true' } : {}
+    return api.get(`/chat/matches/${matchId}/suggestions`, { params })
+  },
 }
