@@ -210,8 +210,7 @@ export const Chat: React.FC = () => {
 
   // Charger les suggestions au chargement si pas de messages
   useEffect(() => {
-      loadConversationStarters()
-
+     
     if (messages.length === 0 && matchId && !isLoading) {
       loadConversationStarters()
     }
