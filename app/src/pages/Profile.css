@@ -257,7 +257,7 @@
 
 @media (max-width: 768px) {
   .profile-container {
-    padding: var(--spacing-4);
+    padding-top: calc(env(safe-area-inset-top) + var(--spacing-4));
     padding-bottom: calc(55px + var(--spacing-4) + env(safe-area-inset-bottom));
   }
 
