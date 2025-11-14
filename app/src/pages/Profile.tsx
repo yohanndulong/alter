@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Button, Card } from '@/components'
+import { Button, Card, UpdateModal } from '@/components'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
 import { Capacitor } from '@capacitor/core'
 import { getProfileImageUrl } from '@/utils/image'
@@ -19,6 +19,7 @@ export const Profile: React.FC = () => {
   const { success, error: showError } = useToast()
   const [currentVersion, setCurrentVersion] = useState<string>('--')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showTestUpdateModal, setShowTestUpdateModal] = useState(false)
 
   useEffect(() => {
     const loadVersionInfo = async () => {
@@ -167,6 +168,11 @@ export const Profile: React.FC = () => {
                 <span className="profile-setting-label">🧪 Gestion des données de test</span>
                 <span className="profile-setting-arrow">›</span>
               </button>
+
+              <button className="profile-setting-item" onClick={() => setShowTestUpdateModal(true)}>
+                <span className="profile-setting-label">🔄 Tester la modale de mise à jour</span>
+                <span className="profile-setting-arrow">›</span>
+              </button>
             </Card>
           </div>
         )}
@@ -227,6 +233,17 @@ export const Profile: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {showTestUpdateModal && (
+        <UpdateModal
+          version="2.0.0"
+          notes="Ceci est une modale de test pour simuler une mise à jour OTA. Elle montre comment l'utilisateur sera informé d'une nouvelle version disponible."
+          onUpdate={() => {
+            setShowTestUpdateModal(false)
+            success('Mise à jour simulée avec succès !')
+          }}
+        />
+      )}
     </div>
   )
 }

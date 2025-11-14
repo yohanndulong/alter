@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { CapacitorUpdater } from '@capgo/capacitor-updater'
 import { App } from '@capacitor/app'
-import { useToast } from './useToast'
 
 interface UpdateManifest {
   version: string
@@ -9,8 +8,14 @@ interface UpdateManifest {
   notes?: string
 }
 
+interface UpdateInfo {
+  version: string
+  notes?: string
+}
+
 export const useAppUpdater = (updateUrl: string, checkIntervalMinutes: number = 60) => {
-  const { showToast } = useToast()
+  const [updateAvailable, setUpdateAvailable] = useState<UpdateInfo | null>(null)
+
   useEffect(() => {
     let checkInterval: NodeJS.Timeout
 
@@ -57,16 +62,10 @@ export const useAppUpdater = (updateUrl: string, checkIntervalMinutes: number = 
           // Définir comme version suivante
           await CapacitorUpdater.set({ id: downloadResult.id })
 
-          // Informer l'utilisateur avec un bouton pour redémarrer
-          showToast({
-            message: `Nouvelle version ${manifest.version} disponible !`,
-            type: 'success',
-            action: {
-              label: 'Redémarrer',
-              onClick: async () => {
-                await CapacitorUpdater.reload()
-              }
-            }
+          // Afficher la modale d'update
+          setUpdateAvailable({
+            version: manifest.version,
+            notes: manifest.notes
           })
         } else {
           console.log('[OTA] App is up to date')
@@ -101,5 +100,11 @@ export const useAppUpdater = (updateUrl: string, checkIntervalMinutes: number = 
         clearInterval(checkInterval)
       }
     }
-  }, [updateUrl, checkIntervalMinutes, showToast])
+  }, [updateUrl, checkIntervalMinutes])
+
+  const handleUpdate = async () => {
+    await CapacitorUpdater.reload()
+  }
+
+  return { updateAvailable, handleUpdate }
 }

@@ -67,3 +67,5 @@ export type { ShareButtonProps } from './ShareButton'
 
 export { ConversationStarters } from './ConversationStarters'
 export type { ConversationStartersProps, Suggestion } from './ConversationStarters'
+
+export { UpdateModal } from './UpdateModal'

@@ -361,5 +361,12 @@
     "previewSubtitle": "Généré par l'IA rien que pour vous",
     "copy": "Copier",
     "shareNow": "Partager"
+  },
+  "update": {
+    "newVersionAvailable": "Nouvelle version disponible",
+    "version": "Version",
+    "whatsNew": "Quoi de neuf ?",
+    "description": "Une nouvelle version d'ALTER est prête à être installée. L'application va redémarrer pour appliquer la mise à jour.",
+    "updateNow": "Mettre à jour maintenant"
   }
 }

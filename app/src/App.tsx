@@ -7,7 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { UnreadCountProvider } from './contexts/UnreadCountContext'
 import { NetworkProvider } from './contexts/NetworkContext'
 import { WebSocketProvider } from './contexts/WebSocketContext'
-import { ToastContainer, BottomNav, NetworkStatus } from './components'
+import { ToastContainer, BottomNav, NetworkStatus, UpdateModal } from './components'
 import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
 import { queryClient } from './lib/queryClient'
@@ -203,16 +203,22 @@ const AppRoutes: React.FC = () => {
   }, [])
 
   // Enable OTA updates only on native platforms
-  if (Capacitor.isNativePlatform()) {
-    const updateUrl = import.meta.env.VITE_UPDATE_URL || 'https://your-domain.com/updates/version.json'
-    // Intervalle de vérification en minutes (1 minute pour tests internes, 60 pour production)
-    const checkInterval = parseInt(import.meta.env.VITE_UPDATE_CHECK_INTERVAL || '60', 10)
-    useAppUpdater(updateUrl, checkInterval)
-  }
+  const updateUrl = import.meta.env.VITE_UPDATE_URL || 'https://your-domain.com/updates/version.json'
+  const checkInterval = parseInt(import.meta.env.VITE_UPDATE_CHECK_INTERVAL || '60', 10)
+  const { updateAvailable, handleUpdate } = Capacitor.isNativePlatform()
+    ? useAppUpdater(updateUrl, checkInterval)
+    : { updateAvailable: null, handleUpdate: async () => {} }
 
   return (
     <>
       <NetworkStatus />
+      {updateAvailable && (
+        <UpdateModal
+          version={updateAvailable.version}
+          notes={updateAvailable.notes}
+          onUpdate={handleUpdate}
+        />
+      )}
       <Routes>
         <Route path="/introduction" element={<Introduction />} />
         <Route
