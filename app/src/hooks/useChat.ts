@@ -81,6 +81,15 @@ export function useMessages(matchId: string | undefined) {
         }
       }
     },
+    select: (data) => {
+      // Convertir les timestamps de string à Date (désérialisation après cache)
+      return data.map(msg => ({
+        ...msg,
+        createdAt: typeof msg.createdAt === 'string' ? new Date(msg.createdAt) : msg.createdAt,
+        deliveredAt: msg.deliveredAt && typeof msg.deliveredAt === 'string' ? new Date(msg.deliveredAt) : msg.deliveredAt,
+        readAt: msg.readAt && typeof msg.readAt === 'string' ? new Date(msg.readAt) : msg.readAt,
+      }))
+    },
     enabled: !!matchId,
     staleTime: 0, // Toujours refetch pour détecter les nouveaux messages
     refetchOnMount: true, // Refetch à chaque montage pour récupérer les messages manqués
@@ -102,6 +111,13 @@ export function useAlterMessages() {
       // Charger les 50 derniers messages depuis le serveur
       const messages = await chatService.loadAlterHistory(50)
       return messages
+    },
+    select: (data) => {
+      // Convertir les timestamps de string à Date (désérialisation après cache)
+      return data.map(msg => ({
+        ...msg,
+        timestamp: msg.createdAt ? (typeof msg.createdAt === 'string' ? new Date(msg.createdAt) : msg.createdAt) : (typeof msg.timestamp === 'string' ? new Date(msg.timestamp) : msg.timestamp)
+      }))
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnMount: false, // Ne pas refetch à chaque mount pour éviter les doublons

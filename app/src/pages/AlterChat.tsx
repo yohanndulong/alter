@@ -48,8 +48,16 @@ export const AlterChat: React.FC = () => {
     const handleAlterMessage = (message: ChatMessage) => {
       console.log('📨 AlterChat: Message received', { id: message.id, role: message.role })
 
+      // Convertir createdAt/timestamp de string à Date si nécessaire
+      const messageWithDate: ChatMessage = {
+        ...message,
+        timestamp: (message as any).createdAt
+          ? (typeof (message as any).createdAt === 'string' ? new Date((message as any).createdAt) : (message as any).createdAt)
+          : (typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)
+      }
+
       // Si c'est un message utilisateur du serveur, remplacer le message temporaire
-      if (message.role === 'user') {
+      if (messageWithDate.role === 'user') {
         queryClient.setQueryData<ChatMessage[]>(
           chatKeys.alterMessages(),
           (old = []) => {
@@ -57,16 +65,16 @@ export const AlterChat: React.FC = () => {
             const withoutTemp = old.filter(m => !m.id.startsWith('temp-'))
             // Ajouter le vrai message s'il n'existe pas déjà
             const exists = withoutTemp.some(m => m.id === message.id)
-            return exists ? withoutTemp : [...withoutTemp, message]
+            return exists ? withoutTemp : [...withoutTemp, messageWithDate]
           }
         )
       } else {
         // Pour les messages assistant, ajouter normalement
-        addMessageToCache(message)
+        addMessageToCache(messageWithDate)
       }
 
       // Arrêter le loading indicator quand Alter répond
-      if (message.role === 'assistant') {
+      if (messageWithDate.role === 'assistant') {
         setIsSending(false)
       }
     }
@@ -532,11 +540,15 @@ export const AlterChat: React.FC = () => {
             <LoadingMoreIndicator text={t('chat.loadingMore')} />
           )}
           {messages.map((message, index) => {
-            // Vérifier si cette question a déjà été répondue
+            // Vérifier si cette question a déjà été répondue (il y a un message après)
             const hasBeenAnswered = message.role === 'assistant' &&
               message.options &&
               message.options.length > 0 &&
               messages.slice(index + 1).some(m => m.role === 'user')
+
+            // Vérifier si c'est le dernier message assistant
+            const isLastAssistantMessage = message.role === 'assistant' &&
+              index === messages.length - 1
 
             return (
               <div
@@ -558,7 +570,7 @@ export const AlterChat: React.FC = () => {
                     </div>
                   )}
                   <div className="alter-chat-message-text">
-                    {parseMarkdown(message.content)}
+                    {message.role === 'user' ? message.content : parseMarkdown(message.content)}
                     {message.role === 'assistant' && message.structuredData?.question && (
                       <>
                         <br />
@@ -567,13 +579,13 @@ export const AlterChat: React.FC = () => {
                     )}
                   </div>
                   <div className="alter-chat-message-time">{formatMessageTime(message.timestamp)}</div>
-                  {message.selectionType === 'freetext' && !hasBeenAnswered && (
+                  {message.selectionType === 'freetext' && !hasBeenAnswered && isLastAssistantMessage && (
                     <div className="alter-chat-options-instruction">
                       <span className="alter-chat-options-instruction-icon">✍️</span>
                       <span>{t('chat.freetextResponse')}</span>
                     </div>
                   )}
-                  {message.options && message.options.length > 0 && message.selectionType !== 'freetext' && !hasBeenAnswered && (
+                  {message.options && message.options.length > 0 && message.selectionType !== 'freetext' && !hasBeenAnswered && isLastAssistantMessage && (
                     <>
                       <div className="alter-chat-options-instruction">
                         {message.selectionType === 'multiple' ? (

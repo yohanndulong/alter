@@ -145,10 +145,6 @@ export const Profile: React.FC = () => {
               <span className="profile-setting-arrow">›</span>
             </button>
 
-            <button className="profile-setting-item" onClick={() => navigate('/settings/privacy')}>
-              <span className="profile-setting-label">{t('profile.privacy')}</span>
-              <span className="profile-setting-arrow">›</span>
-            </button>
           </Card>
         </div>
 
@@ -192,11 +188,6 @@ export const Profile: React.FC = () => {
               <span className="profile-setting-arrow">›</span>
             </button>
 
-            <button className="profile-setting-item" onClick={() => navigate('/help')}>
-              <span className="profile-setting-label">{t('profile.help')}</span>
-              <span className="profile-setting-arrow">›</span>
-            </button>
-
             <div className="profile-setting-item profile-setting-item--info">
               <span className="profile-setting-label">{t('profile.currentVersion')}</span>
               <span className="profile-setting-value">{currentVersion}</span>
@@ -211,7 +202,6 @@ export const Profile: React.FC = () => {
         </div>
 
         <div className="profile-section profile-danger-zone">
-          <h2 className="profile-section-title">{t('profile.dangerZone')}</h2>
           <Card padding="md" className="profile-delete-account">
             <p className="profile-delete-warning">
               {t('profile.deleteWarning')}

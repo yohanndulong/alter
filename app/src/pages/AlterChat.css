@@ -454,9 +454,8 @@
 
 .alter-chat-message--user {
   flex-direction: row-reverse;
-  align-self: flex-end;
   padding-right: var(--spacing-2);
-  max-width: 85%;
+  max-width: 100%;
 }
 
 .alter-chat-message--assistant {
@@ -509,18 +508,14 @@
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-lg);
   margin: 0;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.alter-chat-message--assistant .alter-chat-message-text {
-  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .alter-chat-message-text p {
   margin: 0;
   line-height: var(--line-height-relaxed);
-  white-space: pre-wrap;
+  white-space: normal;
 }
 
 .alter-chat-message-text p:not(:last-child) {
@@ -549,7 +544,7 @@
 .alter-chat-message-time {
   font-size: var(--font-size-xs);
   color: var(--color-text-tertiary);
-  margin-top: var(--spacing-1);
+  margin-top: 0;
   padding: 0 var(--spacing-1);
   font-weight: var(--font-weight-normal);
   opacity: 0.7;
