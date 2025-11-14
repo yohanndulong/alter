@@ -143,6 +143,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  createdAt?: Date | string // Date de création (peut être string quand vient du serveur)
   options?: string[]
   selectionType?: 'single' | 'multiple' | 'freetext'
   structuredData?: {
