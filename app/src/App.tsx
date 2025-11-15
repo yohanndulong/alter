@@ -212,15 +212,21 @@ const AppRoutes: React.FC = () => {
     badgeService.clearBadge()
 
     // Écouter les changements d'état de l'app
-    const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+    let listenerHandle: any = null
+
+    CapApp.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
         console.log('📱 App became active, clearing badge')
         badgeService.clearBadge()
       }
+    }).then(handle => {
+      listenerHandle = handle
     })
 
     return () => {
-      listener.remove()
+      if (listenerHandle) {
+        listenerHandle.remove()
+      }
     }
   }, [])
 
