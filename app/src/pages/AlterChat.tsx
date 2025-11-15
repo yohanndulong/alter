@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Logo, LoadingMoreIndicator, ShareButton } from '@/components'
@@ -40,49 +40,64 @@ export const AlterChat: React.FC = () => {
   useBackButtonNavigation('/discover')
 
   // WebSocket: écouter les nouveaux messages
+  const handleAlterMessageRef = useRef<(message: ChatMessage) => void>()
+
+  handleAlterMessageRef.current = (message: ChatMessage) => {
+    console.log('📨 AlterChat: Message received', { id: message.id, role: message.role })
+
+    // Convertir createdAt/timestamp de string à Date si nécessaire
+    const messageWithDate: ChatMessage = {
+      ...message,
+      timestamp: (message as any).createdAt
+        ? (typeof (message as any).createdAt === 'string' ? new Date((message as any).createdAt) : (message as any).createdAt)
+        : (typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)
+    }
+
+    // Si c'est un message utilisateur du serveur, remplacer le message temporaire
+    if (messageWithDate.role === 'user') {
+      queryClient.setQueryData<ChatMessage[]>(
+        chatKeys.alterMessages(),
+        (old = []) => {
+          // Retirer tous les messages temporaires (temp-*)
+          const withoutTemp = old.filter(m => !m.id.startsWith('temp-'))
+          // Ajouter le vrai message s'il n'existe pas déjà
+          const exists = withoutTemp.some(m => m.id === message.id)
+          return exists ? withoutTemp : [...withoutTemp, messageWithDate]
+        }
+      )
+    } else {
+      // Pour les messages assistant, ajouter normalement
+      addMessageToCache(messageWithDate)
+    }
+
+    // Arrêter le loading indicator quand Alter répond
+    if (messageWithDate.role === 'assistant') {
+      setIsSending(false)
+    }
+  }
+
   useEffect(() => {
-    if (!user?.id) return
+    console.log('🔄 AlterChat useEffect triggered, user?.id:', user?.id)
+
+    if (!user?.id) {
+      console.log('⚠️ No user ID, skipping listener registration')
+      return
+    }
 
     console.log('🟢 AlterChat: Registering message listener')
 
-    const handleAlterMessage = (message: ChatMessage) => {
-      console.log('📨 AlterChat: Message received', { id: message.id, role: message.role })
-
-      // Convertir createdAt/timestamp de string à Date si nécessaire
-      const messageWithDate: ChatMessage = {
-        ...message,
-        timestamp: (message as any).createdAt
-          ? (typeof (message as any).createdAt === 'string' ? new Date((message as any).createdAt) : (message as any).createdAt)
-          : (typeof message.timestamp === 'string' ? new Date(message.timestamp) : message.timestamp)
-      }
-
-      // Si c'est un message utilisateur du serveur, remplacer le message temporaire
-      if (messageWithDate.role === 'user') {
-        queryClient.setQueryData<ChatMessage[]>(
-          chatKeys.alterMessages(),
-          (old = []) => {
-            // Retirer tous les messages temporaires (temp-*)
-            const withoutTemp = old.filter(m => !m.id.startsWith('temp-'))
-            // Ajouter le vrai message s'il n'existe pas déjà
-            const exists = withoutTemp.some(m => m.id === message.id)
-            return exists ? withoutTemp : [...withoutTemp, messageWithDate]
-          }
-        )
-      } else {
-        // Pour les messages assistant, ajouter normalement
-        addMessageToCache(messageWithDate)
-      }
-
-      // Arrêter le loading indicator quand Alter répond
-      if (messageWithDate.role === 'assistant') {
-        setIsSending(false)
-      }
+    const stableHandler = (message: ChatMessage) => {
+      handleAlterMessageRef.current?.(message)
     }
 
-    chatService.onAlterMessage(handleAlterMessage)
+    chatService.onAlterMessage(stableHandler)
 
-    // ⚠️ PAS de cleanup: le WebSocket reste connecté pour les autres pages
-  }, [user?.id, addMessageToCache, queryClient])
+    // Cleanup: retirer le listener au démontage
+    return () => {
+      console.log('🔴 AlterChat: Cleaning up message listener')
+      chatService.offAlterChatEvent('alter-message', stableHandler)
+    }
+  }, [user?.id])
 
   // Initialiser le profileState au chargement des messages
   useEffect(() => {
@@ -109,19 +124,7 @@ export const AlterChat: React.FC = () => {
     }
   }, [isLoading, messages.length])
 
-  // Scroll smooth pour les nouveaux messages
-  useEffect(() => {
-    if (messages.length > 0 && hasScrolledToBottom.current) {
-      scrollToBottom()
-      // Update profile state from the latest assistant message
-      const latestProfileState = [...messages]
-        .reverse()
-        .find(m => m.role === 'assistant' && m.profileState)?.profileState
-      if (latestProfileState) {
-        setProfileState(latestProfileState)
-      }
-    }
-  }, [messages])
+  
 
   // Scroll automatiquement quand Alter commence à réfléchir
   useEffect(() => {
@@ -131,8 +134,13 @@ export const AlterChat: React.FC = () => {
   }, [isSending])
 
   useEffect(() => {
+    console.log('🔄 Scroll handler useEffect triggered, isLoadingMore:', isLoadingMore, 'hasMoreMessages:', hasMoreMessages)
+
     const container = messagesContainerRef.current
-    if (!container) return
+    if (!container) {
+      console.log('⚠️ No container ref')
+      return
+    }
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
@@ -142,12 +150,17 @@ export const AlterChat: React.FC = () => {
       // Détecter si l'utilisateur est en haut (lazy loading)
       const isNearTop = scrollTop < 100
       if (isNearTop && !isLoadingMore && hasMoreMessages) {
+        console.log('⬆️ Near top, loading more messages')
         loadMoreMessages()
       }
     }
 
+    console.log('➕ Adding scroll listener')
     container.addEventListener('scroll', handleScroll)
-    return () => container.removeEventListener('scroll', handleScroll)
+    return () => {
+      console.log('➖ Removing scroll listener')
+      container.removeEventListener('scroll', handleScroll)
+    }
   }, [isLoadingMore, hasMoreMessages])
 
   useEffect(() => {
