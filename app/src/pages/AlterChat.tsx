@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Logo, LoadingMoreIndicator, ShareButton } from '@/components'
@@ -19,8 +19,18 @@ export const AlterChat: React.FC = () => {
 
   // React Query - Charger les messages avec cache automatique
   const queryClient = useQueryClient()
-  const { data: messages = [], isLoading } = useAlterMessages()
+  const { data: rawMessages = [], isLoading } = useAlterMessages()
   const addMessageToCache = useAddAlterMessageToCache()
+
+  // Dédupliquer les messages par ID pour éviter les doublons
+  const messages = useMemo(() => {
+    const seen = new Set<string>()
+    return rawMessages.filter(msg => {
+      if (seen.has(msg.id)) return false
+      seen.add(msg.id)
+      return true
+    })
+  }, [rawMessages])
 
   const [input, setInput] = useState('')
   const [isSending, setIsSending] = useState(false)

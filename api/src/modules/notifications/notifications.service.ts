@@ -1,7 +1,8 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { FcmToken } from './entities/fcm-token.entity';
+import { Message } from '../chat/entities/message.entity';
 import * as admin from 'firebase-admin';
 import * as apn from 'apn';
 import { RegisterTokenDto } from './dto/register-token.dto';
@@ -14,6 +15,8 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     @InjectRepository(FcmToken)
     private fcmTokenRepository: Repository<FcmToken>,
+    @InjectRepository(Message)
+    private messageRepository: Repository<Message>,
   ) {}
 
   onModuleInit() {
@@ -140,6 +143,7 @@ export class NotificationsService implements OnModuleInit {
     title: string,
     body: string,
     data?: Record<string, string>,
+    badgeCount?: number,
   ): Promise<void> {
     try {
       this.logger.log(`\n========== 📲 ENVOI NOTIFICATION ==========`);
@@ -185,7 +189,7 @@ export class NotificationsService implements OnModuleInit {
                 body,
               };
               notification.sound = 'default';
-              notification.badge = 1;
+              notification.badge = badgeCount ?? 1; // Utiliser le badge count fourni, sinon 1
               notification.topic = process.env.APNS_BUNDLE_ID || 'com.alterdating.alter';
               notification.payload = data || {};
 
@@ -275,6 +279,16 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<void> {
     this.logger.log(`📨 Préparation notification MESSAGE: ${senderName} → User ${receiverId}`);
 
+    // Calculer le nombre total de messages non lus pour cet utilisateur (tous matchs confondus)
+    const unreadCount = await this.messageRepository.count({
+      where: {
+        receiverId,
+        readAt: IsNull(),
+      },
+    });
+
+    this.logger.log(`📊 Messages non lus pour ${receiverId}: ${unreadCount}`);
+
     await this.sendNotificationToUser(
       receiverId,
       `Nouveau message de ${senderName}`,
@@ -283,6 +297,7 @@ export class NotificationsService implements OnModuleInit {
         type: 'new_message',
         matchId,
       },
+      unreadCount,
     );
   }
 

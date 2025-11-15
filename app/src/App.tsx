@@ -10,10 +10,12 @@ import { WebSocketProvider } from './contexts/WebSocketContext'
 import { ToastContainer, BottomNav, NetworkStatus, UpdateModal } from './components'
 import { useToast, useAppUpdater } from './hooks'
 import { Capacitor } from '@capacitor/core'
+import { App as CapApp } from '@capacitor/app'
 import { queryClient } from './lib/queryClient'
 import { moderationService } from './services/moderation'
 import { alterChatStorage } from './utils/alterChatStorage'
 import { privacyScreenService } from './services/privacyScreen'
+import { badgeService } from './services/badge'
 
 import { Introduction } from './pages/Introduction'
 import { Login } from './pages/Login'
@@ -200,6 +202,26 @@ const AppRoutes: React.FC = () => {
   useEffect(() => {
     privacyScreenService.disable()
     console.log('🔓 Privacy screen disabled globally - will be enabled only on Chat page')
+  }, [])
+
+  // Réinitialiser le badge iOS quand l'app devient active
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+
+    // Réinitialiser au démarrage
+    badgeService.clearBadge()
+
+    // Écouter les changements d'état de l'app
+    const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      if (isActive) {
+        console.log('📱 App became active, clearing badge')
+        badgeService.clearBadge()
+      }
+    })
+
+    return () => {
+      listener.remove()
+    }
   }, [])
 
   // Enable OTA updates only on native platforms
