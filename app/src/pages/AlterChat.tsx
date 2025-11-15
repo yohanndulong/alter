@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
 import { Logo, LoadingMoreIndicator, ShareButton } from '@/components'
@@ -77,12 +77,7 @@ export const AlterChat: React.FC = () => {
   }
 
   useEffect(() => {
-    console.log('🔄 AlterChat useEffect triggered, user?.id:', user?.id)
-
-    if (!user?.id) {
-      console.log('⚠️ No user ID, skipping listener registration')
-      return
-    }
+    if (!user?.id) return
 
     console.log('🟢 AlterChat: Registering message listener')
 
@@ -94,7 +89,6 @@ export const AlterChat: React.FC = () => {
 
     // Cleanup: retirer le listener au démontage
     return () => {
-      console.log('🔴 AlterChat: Cleaning up message listener')
       chatService.offAlterChatEvent('alter-message', stableHandler)
     }
   }, [user?.id])
@@ -134,13 +128,8 @@ export const AlterChat: React.FC = () => {
   }, [isSending])
 
   useEffect(() => {
-    console.log('🔄 Scroll handler useEffect triggered, isLoadingMore:', isLoadingMore, 'hasMoreMessages:', hasMoreMessages)
-
     const container = messagesContainerRef.current
-    if (!container) {
-      console.log('⚠️ No container ref')
-      return
-    }
+    if (!container) return
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container
@@ -150,17 +139,12 @@ export const AlterChat: React.FC = () => {
       // Détecter si l'utilisateur est en haut (lazy loading)
       const isNearTop = scrollTop < 100
       if (isNearTop && !isLoadingMore && hasMoreMessages) {
-        console.log('⬆️ Near top, loading more messages')
         loadMoreMessages()
       }
     }
 
-    console.log('➕ Adding scroll listener')
     container.addEventListener('scroll', handleScroll)
-    return () => {
-      console.log('➖ Removing scroll listener')
-      container.removeEventListener('scroll', handleScroll)
-    }
+    return () => container.removeEventListener('scroll', handleScroll)
   }, [isLoadingMore, hasMoreMessages])
 
   useEffect(() => {
